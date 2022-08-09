@@ -1,6 +1,6 @@
 {
   "name": "aghanim",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Alternative command client for ErisJS to create Discord bots",
   "main": "index.js",
   "scripts": {
@@ -26,10 +26,6 @@
     "require-reload": "^0.2.2"
   },
   "devDependencies": {
-    "eslint": "^4.19.0",
-    "eslint-config-airbnb-base": "^12.1.0",
-    "eslint-plugin-import": "^2.20.0",
-    "gh-pages": "^4.0.0",
-    "jsdoc": "^3.6.10"
+    "gh-pages": "^4.0.0"
   }
 }

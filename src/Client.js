@@ -10,20 +10,6 @@ const builtinCommandRequirements = require('./requirements')
 
 const DEFAULT_CATEGORY = 'Default'
 
-// Logger
-const logger = new Logger({
-	label: 'Aghanim',
-	timestamps: true,
-	levels: {
-		dev: { style: 'magenta' },
-		commandrunerror: { text: 'command:run:error', style: 'red' },
-		componentrunerror: { text: 'component:run:error', style: 'red' },
-		commandadderror: { text: 'command:add:error', style: 'red' },
-		componentadderror: { text: 'component:add:error', style: 'red' },
-		categoryadderror: { text: 'category:run:error', style: 'red' },
-	},
-	// ignoredLevels: [this.devLogs ? '' : 'dev']
-})
 /**
  * Aghanim Client extends from Eris.Client
  * @extends Eris.Client
@@ -51,14 +37,33 @@ class Client extends Eris.Client {
 	*/
 	constructor(token, options = {}) {
 		// Attempt to load options from aghanim.config.js(on) file
+		let configurationFileFound = false
 		try {
 			options = require(`${process.cwd()}/aghanim.config`) /* eslint import/no-dynamic-require: "off", global-require : "off", no-param-reassign : "off" */
-			logger.info('Loaded: aghanim.config.js(on)')
 		} catch (err) { } /* eslint no-empty: "off" */
 
 		super(token, options)
+
 		options.devLogs = options.devLogs || false
-		logger._config.ignoredLevels = [options.devLogs ? '' : 'dev'] /* eslint no-underscore-dangle: "off" */
+
+		// Logger
+		this._logger = new Logger({
+			label: 'Aghanim',
+			timestamps: true,
+			levels: {
+				dev: { style: 'magenta' },
+				commandrunerror: { text: 'command:run:error', style: 'red' },
+				componentrunerror: { text: 'component:run:error', style: 'red' },
+				commandadderror: { text: 'command:add:error', style: 'red' },
+				componentadderror: { text: 'component:add:error', style: 'red' },
+				categoryadderror: { text: 'category:run:error', style: 'red' },
+			},
+			ignoredLevels: [options.devLogs ? '' : 'dev']
+		})
+
+		if(configurationFileFound){
+			this._logger.info('Loaded: aghanim.config.js(on)')
+		}
 
 		/** @prop {string} - The prefix the bot will respond to in guilds
 		 * for which there is no other confguration. */
@@ -138,7 +143,7 @@ class Client extends Eris.Client {
 				this.handleEvent('ready')()
 			})
 		}).on('error', (err) => {
-			logger.error(err)
+			this._logger.error(err)
 			/**
 			 * Fired when there are an error
 			 * @event Client#aghanim:error
@@ -293,12 +298,12 @@ class Client extends Eris.Client {
 			 * @param {Client} client - Client instance
 			 * @param {Command} command - Command
 			 */
-			logger.commandrunerror(`${command.name} - ${err} - ${err.stack}`)
+			this._logger.commandrunerror(`${command.name} - ${err} - ${err.stack}`)
 			this.emit('aghanim:command:error', err, msg, args, this, command)
 			try {
 				await command.runHook('error', msg, args, this, command, err)
 			} catch (errhook) {
-				logger.commandrunerror(`${command.name} - ${errhook} - ${errhook.stack}`)
+				this._logger.commandrunerror(`${command.name} - ${errhook} - ${errhook.stack}`)
 				this.emit('aghanim:command:error', errhook, msg, args, this, command)
 			}
 		}
@@ -313,7 +318,7 @@ class Client extends Eris.Client {
 					try {
 						await component[eventname](...args, this)
 					} catch (err) {
-						logger.componentrunerror(`${component.constructor.name} (${eventname}) - ${err}`)
+						this._logger.componentrunerror(`${component.constructor.name} (${eventname}) - ${err}`)
 						/**
 						 * Fired when a component get an error to be executed
 						 * @event Client#aghanim:component:error
@@ -355,7 +360,7 @@ class Client extends Eris.Client {
 		if (!(command instanceof Command)) throw new TypeError('Not a command') // throw error if not a Command instance or class extending of command
 		if (!this.categories.find(c => c.name === command.category)) { // Check category exists or assing default category
 			command.category = DEFAULT_CATEGORY
-			logger.warn(`Category not found for ${command.name}. Established as ${DEFAULT_CATEGORY}`)
+			this._logger.warn(`Category not found for ${command.name}. Established as ${DEFAULT_CATEGORY}`)
 		}
 		command.client = this // inject client on command
 		const { requirements } = command
@@ -366,10 +371,10 @@ class Client extends Eris.Client {
 		if (!command.childOf) {
 			const commandExists = this.commands.find(c => c.names.some(cname => [command.name, ...command.aliases].includes(cname)))
 			if (commandExists) {
-				logger.commandadderror(`Command exists: ${command.name}`)
+				this._logger.commandadderror(`Command exists: ${command.name}`)
 			} else {
 				this.commands.push(command)
-				logger.dev(`Command added: ${command.name}`)
+				this._logger.dev(`Command added: ${command.name}`)
 				return command
 			}
 		} else { // Find parent command and add to client
@@ -379,11 +384,11 @@ class Client extends Eris.Client {
 			} else {
 				if (command.category !== parent.category) { // Set category as parent category if is different
 					command.category = parent.category
-					logger.warn(`${command.category} not same upcomand! Established as ${parent.category}`)
+					this._logger.warn(`${command.category} not same upcomand! Established as ${parent.category}`)
 				}
 				command.parent = parent
 				parent.childs.push(command)
-				logger.dev(`Subcommand added: ${command.name} from ${parent.name}`)
+				this._logger.dev(`Subcommand added: ${command.name} from ${parent.name}`)
 				return command
 			}
 		}
@@ -411,7 +416,7 @@ class Client extends Eris.Client {
 			}
 			return command
 		} catch (err) {
-			logger.commandadderror(`${err.stack} on ${filename}`)
+			this._logger.commandadderror(`${err.stack} on ${filename}`)
 		}
 	}
 
@@ -426,10 +431,10 @@ class Client extends Eris.Client {
 	addCategory(name, help, options) {
 		const category = new Category(name, help, options)
 		if (this.categories.find(c => c.name === category.name)) {
-			logger.categoryadderror(`${category.name} exists`)
+			this._logger.categoryadderror(`${category.name} exists`)
 		} else {
 			this.categories.push(category);
-			logger.dev(`Category added: ${category.name}`)
+			this._logger.dev(`Category added: ${category.name}`)
 		}
 	}
 
@@ -460,13 +465,13 @@ class Client extends Eris.Client {
 			if (instanceComponent.enable) {
 				instanceComponent.name = component.name
 				this.components[component.name] = instanceComponent
-				logger.dev(`Component Added: ${component.name}`)
+				this._logger.dev(`Component Added: ${component.name}`)
 				return this.components[component.name]
 			} else {
-				logger.warn(`Component Disabled: ${component.name}`)
+				this._logger.warn(`Component Disabled: ${component.name}`)
 			}
 		} catch (err) {
-			logger.componentadderror(`${component.name} - ${err}`)
+			this._logger.componentadderror(`${component.name} - ${err}`)
 		}
 	}
 
@@ -484,7 +489,7 @@ class Client extends Eris.Client {
 			}
 			return component
 		} catch (err) {
-			logger.componentadderror(`${err} on ${filename}`)
+			this._logger.componentadderror(`${err} on ${filename}`)
 		}
 	}
 
@@ -508,7 +513,7 @@ class Client extends Eris.Client {
 			this._commandsRequirements[requirement.name] = requirement
 			return requirement
 		} else {
-			logger.error('Error adding command requirement')
+			this._logger.error('Error adding command requirement')
 		}
 	}
 
@@ -527,7 +532,7 @@ class Client extends Eris.Client {
 			}
 			return requirement
 		} catch (err) {
-			logger.commandadderror(`${err} on ${filename}`)
+			this._logger.commandadderror(`${err} on ${filename}`)
 		}
 	}
 
@@ -545,7 +550,7 @@ class Client extends Eris.Client {
 	 * on them.
 	 */
 	reloadCommands() { 
-		logger.dev('Reloading commands...')
+		this._logger.dev('Reloading commands...')
 		const commands = this.commands.reduce((filenames, command) => {
 			filenames.push(command.filename ? command.filename : command)
 			if (command.childs.length > 0) {
@@ -565,7 +570,7 @@ class Client extends Eris.Client {
 	 * on them.
 	 */
 	reloadComponents() { 
-		logger.dev('Reloading components...')
+		this._logger.dev('Reloading components...')
 		const components = Object.keys(this.components).map(key => this.components[key]).reduce((filenames, component) => {
 			if (component.filename) {
 				filenames.push([component.filename, component.name || component.constructor.name])
@@ -581,7 +586,7 @@ class Client extends Eris.Client {
 	}
 
 	reloadCommandRequirements() {
-		logger.dev('Reloading command requirements...')
+		this._logger.dev('Reloading command requirements...')
 		const filenamesRequirement = Object.keys(this._commandsRequirements).map(key => this._commandsRequirements[key]).reduce((filenames, requirement) => {
 			if (requirement.filename) {
 				filenames.push(requirement.filename)
@@ -731,10 +736,10 @@ class Client extends Eris.Client {
 					return Promise.resolve(false)
 				} else if (!pass) { // false/undefined do response/responseDM/run methods
 					if (["string", "object"].includes(typeof(requirement.response))) {
-						await msg.channel.createMessage(requirement.response) // Response to message
+						await this.createMessage(msg.channel.id, requirement.response) // Response to message
 					} else if (typeof requirement.response === "function") {
-						const res = await requirement.response(msg, args, client, command, requirement) 
-						await msg.channel.createMessage(res) // Response to message
+						const res = await requirement.response(msg, args, client, command, requirement)
+						await this.createMessage(msg.channel.id, res) // Response to message
 					} else if (["string", "object"].includes(typeof(requirement.responseDM))) {
 						await msg.author.getDMChannel().then(channel => channel.createMessage(requirement.responseDM)) // Response with a dm
 					} else if (typeof requirement.responseDM === "function") {
@@ -749,40 +754,6 @@ class Client extends Eris.Client {
 			return Promise.resolve(true) // result
 		}, Promise.resolve(true))
 	}
-	// /**
-	//  * Creates a message. If the specified message content is longer than 2000
-	//  * characters, splits the message intelligently into chunks until each chunk
-	//  * is less than 2000 characters, then sends each chunk as its own message.
-	//  * Embeds and files are sent with the last message and are otherwise
-	//  * unaffected.
-	//  * @param content
-	//  * @param
-	//  * @TODO everything
-	//  */
-	// _createMessageChunked (channelId, content, file, maxLength = 2000) {
-	//   let embed
-	//   if (typeof content === 'object') {
-	//     embed = content.embed
-	//     content = content.content
-	//   } else {
-	//     embed = null
-	//   }
-	//   let self = this
-	//   ;(function sendChunk (left) {
-	//     console.log(left.length)
-	//     if (left.length < maxLength) return self.createMessage(channelId, {content, embed}, file)
-	//     let newlineIndex = left.substr(0, maxLength).lastIndexOf('\n')
-	//     if (newlineIndex < 1) newlineIndex = maxLength - 1
-	//     console.log(newlineIndex)
-	//     left = left.split('')
-	//     const chunk = left.splice(0, newlineIndex)
-	//     if (!left.length) {
-	//       // Interesting, the message was exactly good. We'll put the embed and stuff in now.
-	//       return self.createMessage(channelId, {content: chunk, embed: embed}, file)
-	//     }
-	//     sendChunk(left.join(''), maxLength)
-	//   }(content))
-	// }
 }
 
 
