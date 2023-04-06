@@ -48,6 +48,8 @@ class Command {
 		this.run = run || options.run || async function(){}
 		/** @prop {string} - Description of command */
 		this.help = options.help || ''
+		this.description = options.description || ''
+		this.options = options.options || undefined
 		/** @prop {string | EmbedMessageObject | function } - Response of command. If it exists, ignore run function. If function (msg, args, client, commad) */
 		this.response = options.response || ''
 		/** @prop {string | EmbedMessageObject | function } - Response of command with a direct message. If it exists, ignore run function. If function (msg, args, client, commad) */
@@ -60,7 +62,7 @@ class Command {
 		this.requirements = Array.isArray(options.requirements) ? options.requirements : [] // These requirements are mapped in client.addCommand
 		/** @prop {object} - Command Hooks */
 		this.hooks = {
-			prereq: [], // Fired before check reqiurements
+			prereq: [], // Fired before check requirements
 			prerun: [], // Fired before run command
 			executed: [], // Fired after command is run
 			error: [] // Fired when there is an error running pre/executed hooks and response/run methods

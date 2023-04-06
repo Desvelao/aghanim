@@ -72,6 +72,10 @@ class Client extends Eris.Client {
 		this.commands = []
 		/** @prop {Category[]} - Categories for commands. */
 		this.categories = []
+		/** @prop {Command[]} - An array of commands the bot will respond to. */
+		this.interactionCommands = []
+		/** @prop {Category[]} - Categories for commands. */
+		this.interactionCommandCategories = []
 		/** @prop {Object<Component>} - Components. */
 		this.components = {}
 		/** @prop {Object} - Setup */
@@ -141,6 +145,17 @@ class Client extends Eris.Client {
 				})
 
 				this.handleEvent('ready')()
+				this.getGuildCommands("").then(commands => {
+					for (const interaction of this.interactionCommands) {
+						const { name, description, type, options } = interaction;
+						if(commands.every(command => command.name !== interaction.name)){
+							this.createGuildCommand("", {name, description, type, options});
+						}else{
+							const command = commands.find(command => command.name === interaction.name)
+							this.editGuildCommand("", command.id, {name, description, type, options})
+						}
+					}
+				});
 			})
 		}).on('error', (err) => {
 			this._logger.error(err)
@@ -158,6 +173,7 @@ class Client extends Eris.Client {
 			.on('guildDelete', this.handleEvent('guildDelete'))
 			.on('guildMemberAdd', this.handleEvent('guildMemberAdd'))
 			.on('guildMemberRemove', this.handleEvent('guildMemberRemove'))
+			.on('interactionCreate', this.handleInteractionCreate)
 
 		this.setup.helpMessage = `${options.helpMessage || '**Help**'}\n\n`
 		this.setup.helpMessageAfterCategories = `${options.helpMessageAfterCategories || `**Note**: Use \`${this.prefix}help <category>\` to see those commands`}\n\n`
@@ -307,6 +323,77 @@ class Client extends Eris.Client {
 				this.emit('aghanim:command:error', errhook, msg, args, this, command)
 			}
 		}
+	}
+
+	/**
+	 * Given a message, see if there is a command and process it if so.
+	 * @param {Object} interaction - The interaction object recieved from Eris.
+	 * @return {*} - Returns
+	 */
+	 async handleInteractionCreate(interaction) {
+		if(interaction instanceof Eris.CommandInteraction) {
+			const interactionCommand = this.interactionCommands.find(interactionCommand => interactionCommand.name === interaction.data.name);
+			interaction.user = interaction.user || interaction.member.user
+			try{
+				if (interactionCommand.requirements && interactionCommand.requirements.length){
+					for(const requirement of interactionCommand.requirements){
+						if(!(await requirement.validate(interaction, this, interactionCommand, requirement))){
+							if(requirement.response){
+								switch (typeof requirement.response) {
+									case 'string':{
+										return await interaction.createMessage(requirement.response)
+										break;
+									}
+									case 'object':{
+										return await interaction.createMessage(requirement.response)
+										break;
+									}
+									case 'function':{
+										return await requirement.response(interaction, this, interactionCommand, requirement)
+										break;
+									}
+									default:
+										break;
+								}
+							}/*else if(requirement.run){
+								switch (typeof requirement.response) {
+									case 'string':{
+										return interaction.response
+										break;
+									}
+									case 'function':{
+										return interaction.response(interaction, this, interactionCommand, requirement)
+										break;
+									}
+									default:
+										return interaction.run(interaction, this, interactionCommand, requirement)
+										break;
+								}
+							}*/
+						}
+					}
+				}
+				await interactionCommand.run(interaction, this, interactionCommand);
+			}catch(err){
+			/**
+			 * Fired when a command got an error executing the run function
+			 * @event Client#aghanim:command:error
+			 * @param {object} err - Error
+			 * @param {object} msg - Eris Message object
+			 * @param {args} args - Args object
+			 * @param {Client} client - Client instance
+			 * @param {Command} command - Command
+			 */
+				this._logger.commandrunerror(`${interactionCommand.name} - ${err} - ${err.stack}`)
+				this.emit('aghanim:command:error', err, interaction, this, interactionCommand)
+				try {
+					await command.runHook('error', interaction, this, interactionCommand, err)
+				} catch (errhook) {
+					this._logger.commandrunerror(`${interactionCommand.name} - ${errhook} - ${errhook.stack}`)
+					this.emit('aghanim:command:error', errhook, interaction, this, interactionCommand)
+				}
+			}
+		};
 	}
 
 	handleEvent(eventname) {
@@ -583,6 +670,57 @@ class Client extends Eris.Client {
 			this.addComponentFile(filename)
 		})
 		this.handleEvent('ready')()
+	}
+
+	addInteractionCommand(command){
+		if (!(command instanceof Command) && typeof command === 'object') { // allow command as object and create it
+			command = new Command(command)
+		}
+
+		const { requirements = [] } = command
+		command.requirements = requirements.map(requirement => {
+			const resolvedRequirement = getCommandRequirement(this, command, requirement)
+			return resolvedRequirement
+		})
+		// mapCommandRequirement(this, command, requirements) /* eslint no-use-before-define: "off" */
+
+
+		// reqs.forEach(req => {
+		// 	const requirement = getCommandRequirement(client, command, req)
+		// 	if(Array.isArray(requirement)){
+		// 		mapCommandRequirement(client, command, requirement)
+		// 	}else{
+		// 		command.addRequirement(requirement)
+		// 	}
+		// })
+
+		this.interactionCommands.push(command);
+	}
+
+	/**
+	 * Load all the JS files in a directory and attempt to load them each as commands.
+	 * @param {string} dirname - The location of the directory.
+	 */
+	 addInteractionCommandDir(dirname) {
+		this._addFromDirectory(dirname, filename => this.addInteractionCommandFile(filename))
+	}
+
+	/**
+	 * Load a command exported from a file.
+	 * @param {string} filename - The location of the file.
+	 * @returns {Command} - Command added.
+	 */
+	 addInteractionCommandFile(filename) {
+		try {
+			const commandLoaded = reload(filename)
+			const command = this.addInteractionCommand(commandLoaded)
+			if (command) {
+				command.filename = filename
+			}
+			return command
+		} catch (err) {
+			this._logger.commandadderror(`${err.stack} on ${filename}`)
+		}
 	}
 
 	reloadCommandRequirements() {
