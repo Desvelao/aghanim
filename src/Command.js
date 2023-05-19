@@ -50,6 +50,7 @@ class Command {
 		this.help = options.help || ''
 		this.description = options.description || ''
 		this.options = options.options || undefined
+		this.optionsRest = options.optionsRest || undefined
 		/** @prop {string | EmbedMessageObject | function } - Response of command. If it exists, ignore run function. If function (msg, args, client, commad) */
 		this.response = options.response || ''
 		/** @prop {string | EmbedMessageObject | function } - Response of command with a direct message. If it exists, ignore run function. If function (msg, args, client, commad) */

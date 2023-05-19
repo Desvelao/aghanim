@@ -145,14 +145,21 @@ class Client extends Eris.Client {
 				})
 
 				this.handleEvent('ready')()
-				this.getGuildCommands("").then(commands => {
+				const guildID = ''
+				this.getGuildCommands(guildID).then(commands => {
 					for (const interaction of this.interactionCommands) {
-						const { name, description, type, options } = interaction;
+						const { name, description, type, options, optionsRest } = interaction;
 						if(commands.every(command => command.name !== interaction.name)){
-							this.createGuildCommand("", {name, description, type, options});
-						}else{
+							this.createGuildCommand(guildID, {name, description, type, options}).then(() => {
+								console.log('Command', name, 'created')
+							});
+						}else if (optionsRest && optionsRest.dev && optionsRest.dev.forceUpdate){
 							const command = commands.find(command => command.name === interaction.name)
-							this.editGuildCommand("", command.id, {name, description, type, options})
+							this.editGuildCommand(guildID, command.id, {name, description, type, options}).then(() => {
+								console.log('Command', name, 'edited')
+							})
+						}else{
+							console.log('Command not updated', name)
 						}
 					}
 				});
@@ -334,6 +341,8 @@ class Client extends Eris.Client {
 		if(interaction instanceof Eris.CommandInteraction) {
 			const interactionCommand = this.interactionCommands.find(interactionCommand => interactionCommand.name === interaction.data.name);
 			interaction.user = interaction.user || interaction.member.user
+			this._logger.info(`Command interaction triggered: ${interactionCommand.name}`)
+			this.emit('aghanim:command-interaction:triggered', interaction, this, interactionCommand)
 			try{
 				if (interactionCommand.requirements && interactionCommand.requirements.length){
 					for(const requirement of interactionCommand.requirements){
@@ -373,7 +382,11 @@ class Client extends Eris.Client {
 						}
 					}
 				}
+				this._logger.debug(`Command interaction executing: ${interactionCommand.name}`)
+				this.emit('aghanim:command-interaction:executing', interaction, this, interactionCommand)
 				await interactionCommand.run(interaction, this, interactionCommand);
+				this._logger.info(`Command interaction executed: ${interactionCommand.name}`)
+				this.emit('aghanim:command-interaction:executed', interaction, this, interactionCommand)
 			}catch(err){
 			/**
 			 * Fired when a command got an error executing the run function
@@ -385,12 +398,12 @@ class Client extends Eris.Client {
 			 * @param {Command} command - Command
 			 */
 				this._logger.commandrunerror(`${interactionCommand.name} - ${err} - ${err.stack}`)
-				this.emit('aghanim:command:error', err, interaction, this, interactionCommand)
+				this.emit('aghanim:command-interaction:error', err, interaction, this, interactionCommand)
 				try {
 					await command.runHook('error', interaction, this, interactionCommand, err)
 				} catch (errhook) {
 					this._logger.commandrunerror(`${interactionCommand.name} - ${errhook} - ${errhook.stack}`)
-					this.emit('aghanim:command:error', errhook, interaction, this, interactionCommand)
+					this.emit('aghanim:command-interaction:error', errhook, interaction, this, interactionCommand)
 				}
 			}
 		};
