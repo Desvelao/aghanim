@@ -145,24 +145,7 @@ class Client extends Eris.Client {
 				})
 
 				this.handleEvent('ready')()
-				const guildID = ''
-				this.getGuildCommands(guildID).then(commands => {
-					for (const interaction of this.interactionCommands) {
-						const { name, description, type, options, optionsRest } = interaction;
-						if(commands.every(command => command.name !== interaction.name)){
-							this.createGuildCommand(guildID, {name, description, type, options}).then(() => {
-								console.log('Command', name, 'created')
-							});
-						}else if (optionsRest && optionsRest.dev && optionsRest.dev.forceUpdate){
-							const command = commands.find(command => command.name === interaction.name)
-							this.editGuildCommand(guildID, command.id, {name, description, type, options}).then(() => {
-								console.log('Command', name, 'edited')
-							})
-						}else{
-							console.log('Command not updated', name)
-						}
-					}
-				});
+				this.registerInteractionCommands()
 			})
 		}).on('error', (err) => {
 			this._logger.error(err)
@@ -217,6 +200,122 @@ class Client extends Eris.Client {
 				}
 				return msg.author.getDMChannel().then(channel => channel.createMessage(helpMessage))
 			}))
+		}
+	}
+
+	async registerInteractionCommands(){
+		
+		const interactionCommandScopeGlobal = this.interactionCommands
+			.filter(interactionCommand => !interactionCommand.scope
+				|| (interactionCommand.scope && interactionCommand.scope.type === 'global')
+			)
+		const interactionCommandScopeGuilds = this.interactionCommands
+			.filter(interactionCommand => (
+				interactionCommand.scope
+				&& interactionCommand.scope.type === 'guild'
+				)
+			)
+			
+		if(interactionCommandScopeGlobal.length){
+			try{
+				// TODO: register, edit and delete glboal commands
+				this._logger.debug(`Command interaction scope global: ${interactionCommandScopeGlobal.map(({name}) => name).join(', ')}`)
+				const globalCommands = await this.getCommands();
+				for(const interactionCommand of interactionCommandScopeGlobal){
+					const { name, description, type, options, customOptions } = interactionCommand;
+					/* Global command to create */
+					if(globalCommands.every(command => command.name !== interaction.name)){
+						this.createCommand({name, description, type, options}).then(() => {
+							this._logger.info(`Command interaction scope global created: ${name}`)
+						})
+					/* Global command to edit */
+					}else if (customOptions && customOptions['dev.forceUpdate']){
+						const command = globalCommands.find(command => command.name === interaction.name)
+						this.editCommand(command.id, {name, description, type, options}).then(() => {
+							this._logger.info(`Command interaction scope global edited: ${name}`)
+						})
+					/* Global command to ignore the editing */
+					}else{
+						this._logger.debug(`Command interaction scope global skipped to updating: ${name}. Use customOptions['dev.forceUpdate'] = true`)
+					}
+				}
+
+				/* Glboal commands to remove */
+				const globalCommandsToRemove = globalCommands
+					// TODO: remove the commands that are disabled
+					.filter(globalCommand => !interactionCommandScopeGlobal.some(interactionCommand => interactionCommand.name === globalCommand.name)) 
+				if(globalCommandsToRemove.length){
+					this._logger.warn(`Command interaction scope global commands to remove: ${globalCommandsToRemove.map(({name}) => name).join(', ')}`)
+					this._logger.debug(`Command interaction scope global registered commands: ${globalCommands.map(({name}) => name).join(', ')}`)
+					globalCommandsToRemove.forEach(globalCommand => {
+						this._logger.debug(`Command interaction scope global to remove ${guildCommand.name}`)
+						this.deleteCommand(guildID, globalCommand.id).then(() => {
+							this._logger.info(`Command interaction scope global removed: ${guildCommand.name}`)
+						}).catch((error) => {
+							this._logger.error(`Command interaction scope global error removing ${guildCommand.name}: ${error}`)
+						})
+					})
+				}
+			}catch(error){
+
+			}
+		}
+
+		if(interactionCommandScopeGuilds.length){
+			const guildIDs = new Set()
+			interactionCommandScopeGuilds.forEach(interactionCommandScopeGuild => guildIDs.add(...interactionCommandScopeGuild.scope.guildIDs))
+
+			;[...guildIDs].forEach(async guildID => {
+				try{
+					const interactionCommandsGuild = interactionCommandScopeGuilds
+						.filter(interactionCommandScopeGuild => interactionCommandScopeGuild.scope.guildIDs.includes(guildID))
+					this._logger.debug(`Command interaction scope guild ID (${guildID}): ${interactionCommandsGuild.map(({name}) => name).join(', ')}`)
+	
+					const guildCommands = await this.getGuildCommands(guildID)
+					
+					/* Guild command defined */
+					if(interactionCommandsGuild.length){
+						for (const interaction of interactionCommandsGuild) {
+							const { name, description, type, options, customOptions } = interaction;
+							/* Guild command to create */
+							if(guildCommands.every(command => command.name !== interaction.name)){
+								this.createGuildCommand(guildID, {name, description, type, options}).then(() => {
+									this._logger.info(`Command interaction scope guild ID (${guildID}) created: ${name}`)
+								})
+							/* Guild command to edit */
+							}else if (customOptions && customOptions['dev.forceUpdate']){
+								const command = guildCommands.find(command => command.name === interaction.name)
+								this.editGuildCommand(guildID, command.id, {name, description, type, options}).then(() => {
+									this._logger.info(`Command interaction scope guild ID (${guildID}) edited: ${name}`)
+								})
+							/* Guild command to ignore the editing */
+							}else{
+								this._logger.debug(`Command interaction scope guild ID (${guildID}) skipped to updating: ${name}. Use customOptions['dev.forceUpdate'] = true`)
+							}
+						}
+					}
+					
+					/* Guild commands to remove */
+					const guildCommandsToRemove = guildCommands
+						// TODO: remove the commands that are disabled
+						.filter(guildCommand => !interactionCommandsGuild.some(interactionCommandGuild => interactionCommandGuild.name === guildCommand.name)) 
+					if(guildCommandsToRemove.length){
+						this._logger.warn(`Command interaction scope guild ID (${guildID}) guild commands to remove: ${JguildCommandsToRemove.map(({name}) => name).join(', ')}`)
+						this._logger.debug(`Command interaction scope guild ID (${guildID}) registered commands: ${guildCommands.map(({name}) => name).join(', ')}`)
+						guildCommandsToRemove.forEach(guildCommand => {
+							this._logger.debug(`Command interaction scope guild ID (${guildID}) to remove ${guildCommand.name}`)
+							this.deleteGuildCommand(guildID, guildCommand.id).then(() => {
+								this._logger.info(`Command interaction scope guild ID (${guildID}) removed: ${guildCommand.name}`)
+							}).catch((error) => {
+								this._logger.error(`Command interaction scope guild ID (${guildID}) error removing ${guildCommand.name}: ${error}`)
+							})
+						})
+					}
+				}catch(error){
+					
+				}
+
+			})
 		}
 	}
 
@@ -340,10 +439,18 @@ class Client extends Eris.Client {
 	 async handleInteractionCreate(interaction) {
 		if(interaction instanceof Eris.CommandInteraction) {
 			const interactionCommand = this.interactionCommands.find(interactionCommand => interactionCommand.name === interaction.data.name);
+			if(!interactionCommand){
+				this._logger.warn(`Command interaction triggered but the runner was not found: ${interaction.data.name}`)
+				this.emit('aghanim:command-interaction:triggered-not-found', interaction, this, interactionCommand)
+				return;
+			};
 			interaction.user = interaction.user || interaction.member.user
-			this._logger.info(`Command interaction triggered: ${interactionCommand.name}`)
+			this._logger.debug(`Command interaction triggered: ${interactionCommand.name}`)
 			this.emit('aghanim:command-interaction:triggered', interaction, this, interactionCommand)
 			try{
+				await interactionCommand.runHook('trigger', interaction, this, interactionCommand)
+				interactionCommand.customOptions && interactionCommand.customOptions.defer && await interaction.defer()
+
 				if (interactionCommand.requirements && interactionCommand.requirements.length){
 					for(const requirement of interactionCommand.requirements){
 						if(!(await requirement.validate(interaction, this, interactionCommand, requirement))){
@@ -358,7 +465,8 @@ class Client extends Eris.Client {
 										break;
 									}
 									case 'function':{
-										return await requirement.response(interaction, this, interactionCommand, requirement)
+										const interactionResponse = await requirement.response(interaction, this, interactionCommand, requirement)
+										return await interaction.createMessage(interactionResponse)
 										break;
 									}
 									default:
@@ -387,6 +495,9 @@ class Client extends Eris.Client {
 				await interactionCommand.run(interaction, this, interactionCommand);
 				this._logger.info(`Command interaction executed: ${interactionCommand.name}`)
 				this.emit('aghanim:command-interaction:executed', interaction, this, interactionCommand)
+				this._logger.debug(`Command interaction running hook: execute: ${interactionCommand.name}`)
+				await interactionCommand.runHook('execute', interaction, this, interactionCommand)
+				this._logger.debug(`Command interaction run hook: execute: ${interactionCommand.name}`)
 			}catch(err){
 			/**
 			 * Fired when a command got an error executing the run function
@@ -400,7 +511,7 @@ class Client extends Eris.Client {
 				this._logger.commandrunerror(`${interactionCommand.name} - ${err} - ${err.stack}`)
 				this.emit('aghanim:command-interaction:error', err, interaction, this, interactionCommand)
 				try {
-					await command.runHook('error', interaction, this, interactionCommand, err)
+					await interactionCommand.runHook('error', interaction, this, interactionCommand, err)
 				} catch (errhook) {
 					this._logger.commandrunerror(`${interactionCommand.name} - ${errhook} - ${errhook.stack}`)
 					this.emit('aghanim:command-interaction:error', errhook, interaction, this, interactionCommand)
@@ -695,7 +806,7 @@ class Client extends Eris.Client {
 			const resolvedRequirement = getCommandRequirement(this, command, requirement)
 			return resolvedRequirement
 		})
-		// mapCommandRequirement(this, command, requirements) /* eslint no-use-before-define: "off" */
+		mapCommandRequirement(this, command, requirements) /* eslint no-use-before-define: "off" */
 
 
 		// reqs.forEach(req => {

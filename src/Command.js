@@ -50,7 +50,7 @@ class Command {
 		this.help = options.help || ''
 		this.description = options.description || ''
 		this.options = options.options || undefined
-		this.optionsRest = options.optionsRest || undefined
+		this.customOptions = options.customOptions || undefined
 		/** @prop {string | EmbedMessageObject | function } - Response of command. If it exists, ignore run function. If function (msg, args, client, commad) */
 		this.response = options.response || ''
 		/** @prop {string | EmbedMessageObject | function } - Response of command with a direct message. If it exists, ignore run function. If function (msg, args, client, commad) */
@@ -62,17 +62,18 @@ class Command {
 		/** @prop {array} - Command Requirements */
 		this.requirements = Array.isArray(options.requirements) ? options.requirements : [] // These requirements are mapped in client.addCommand
 		/** @prop {object} - Command Hooks */
-		this.hooks = {
-			prereq: [], // Fired before check requirements
-			prerun: [], // Fired before run command
-			executed: [], // Fired after command is run
-			error: [] // Fired when there is an error running pre/executed hooks and response/run methods
-		}
+		this.hooks = [];
+		[
+			'trigger',
+			'prereq', // Fired before check requirements
+			'prerun', // Fired before run command
+			'execute', // Fired after command is run
+			'error' // Fired when there is an error running pre/executed hooks and response/run methods
+		].forEach(hookStep => this.hooks[hookStep] = [])
 		if(options.hooks && typeof(options.hooks) === 'object'){
-			Object.keys(this.hooks).forEach(key => {
-				const hook = this.hooks[key]
-				if(typeof(hook) !== 'function') throw new TypeError(`${hook} is not a function on ${this.name}`)
-				this.addHook(key, hook)
+			Object.entries(options.hooks).forEach(([hookStep, hook]) => {
+				if(typeof(hook) !== 'function') throw new TypeError(`Hook ${hookStep} is not a function on ${this.name}`)
+				this.addHook(hookStep, hook)
 			})
 		}
 		/** @prop {string|undefined} - Name of uppercomand */
@@ -85,6 +86,8 @@ class Command {
 		this.hide = options.hide !== undefined ? options.hide : false // Hide command from help command
 		/** @prop {boolean} - Enable/Disable the command */
 		this.enable = options.enable !== undefined ? options.enable : true // Enable or disable command
+		/** @prop {object | undefined} - Custom props */
+		this.scope = options.scope || {type: 'global'}
 		/** @prop {Client} - Client instance */
 		this.client = undefined
 		/** @prop {object | undefined} - Custom props */

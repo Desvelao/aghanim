@@ -1,8 +1,9 @@
 module.exports = ({time, response, responseDM, run}) => {
 	const requirement = {
-		validate: (msg, args, client, command, req) => {
-			const cooldown = (req.cooldowns[msg.author.id] || 0) - Math.round(new Date().getTime() / 1000)
-			args.reqUserCooldown = { cooldown, user: msg.author.username }
+		validate: (context, client, command, req) => {
+			const cooldown = (req.cooldowns[context.user.id] || 0) - Math.round(new Date().getTime() / 1000)
+			!context.ctx && (context.ctx = {})
+			context.ctx.reqUserCooldown = { cooldown, user: context.user.username }
 			return cooldown < 0
 		},
 		cooldowns: {},
@@ -12,23 +13,23 @@ module.exports = ({time, response, responseDM, run}) => {
 		run,
 		init: (client, command, req) => {
 			// Add hook to after command execute
-			command.addHook('executed', (msg, args, client, command) => {
-				req.cooldowns[msg.author.id] = Math.round(new Date().getTime() / 1000) + req.time
+			command.addHook('execute', (context, client, command) => {
+				req.cooldowns[context.user.id] = Math.round(new Date().getTime() / 1000) + req.time
 			})
 		} 
 	}
 	if (response) {
 		if (typeof(response) === 'string') {
-			requirement.response = (msg, args, client, command, req) => replacement(response, args.reqUserCooldown)
+			requirement.response = (context, client, command, req) => replacement(response, context.ctx.reqUserCooldown)
 		} else if (typeof(response) === 'function') {
-			requirement.response = (msg, args, client, command, req) => replacement(response(msg, args, client, command, req), args.reqUserCooldown)
+			requirement.response = (context, client, command, req) => replacement(response(context, client, command, req), context.ctx.reqUserCooldown)
 		}
 	}
 	if (responseDM) {
 		if (typeof(responseDM) === 'string') {
-			requirement.responseDM = (msg, args, client, command, req) => replacement(responseDM, args.reqUserCooldown)
+			requirement.responseDM = (context, client, command, req) => replacement(responseDM, context.ctx.reqUserCooldown)
 		} else if (typeof(responseDM) === 'function') {
-			requirement.responseDM = (msg, args, client, command, req) => replacement(responseDM(msg, args, client, command, req), args.reqUserCooldown)
+			requirement.responseDM = (context, client, command, req) => replacement(responseDM(context.ctx, client, command, req), context.ctx.reqUserCooldown)
 		}
 	}
 	return requirement
