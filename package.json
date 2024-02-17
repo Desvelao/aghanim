@@ -9,7 +9,9 @@
     "docs": "jsdoc src -d docs --readme ./readme.md -c ./conf.json -u ./tutorials",
     "docs2": "jsdoc src -d docs --readme ./readme.md -c ./conf.json -u ./tutorials -t node_modules/jsdoc-template",
     "predeploy": "npm run docs",
-    "deploy": "gh-pages -d docs"
+    "deploy": "gh-pages -d docs",
+    "prettier:check": "prettier . --check",
+    "prettier:fix": "prettier src --write"
   },
   "keywords": [
     "Aghanim",
@@ -23,6 +25,7 @@
     "another-logger": "^3.0.1",
     "eris": "^0.16.1",
     "glob": "^7.2.0",
+    "prettier": "2.3.2",
     "require-reload": "^0.2.2"
   },
   "devDependencies": {
