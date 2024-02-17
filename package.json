@@ -2,7 +2,7 @@
   "name": "aghanim",
   "version": "0.2.0",
   "description": "Alternative command client for ErisJS to create Discord bots",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "eslint": "./node_modules/.bin/eslint index.js",
