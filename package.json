@@ -10,7 +10,7 @@
     "docs2": "jsdoc src -d docs --readme ./readme.md -c ./conf.json -u ./tutorials -t node_modules/jsdoc-template",
     "predeploy": "npm run docs",
     "deploy": "gh-pages -d docs",
-    "prettier:check": "prettier . --check",
+    "prettier:check": "prettier src --check",
     "prettier:fix": "prettier src --write"
   },
   "keywords": [
