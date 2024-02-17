@@ -1,10 +1,10 @@
-const Eris = require('eris') /* eslint import/no-cycle : "off" */
+const Eris = require('eris'); /* eslint import/no-cycle : "off" */
 const Client = require('./Client');
 const Command = require('./Command');
 const Category = require('./Category');
 const Component = require('./Component');
-const Logger = require('./Logger')
-const CommandRequirementsCreators = require('./requirements')
+const Logger = require('./Logger');
+const CommandRequirementsCreators = require('./requirements');
 
 /**
  * Aghanim module to create a Command Client for {@link https://abal.moe/Eris/docs/getting-started Eris} using nodejs!
@@ -27,4 +27,3 @@ module.exports.Eris = Eris;
 module.exports.Logger = Logger;
 /** @prop {CommandRequirementsCreators} CommandRequirementsCreators See {@link https://desvelao.github.com/aghanim/CommandRequirements CommandRequirements} */
 module.exports.CommandRequirementsCreators = CommandRequirementsCreators;
-

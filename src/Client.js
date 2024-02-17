@@ -1,478 +1,716 @@
-const Eris = require('eris')
-const glob = require('glob')
-const path = require('path')
-const Logger = require('another-logger')
-const reload = require('require-reload')(require)
-const Command = require('./Command')
-const Category = require('./Category')
-const Component = require('./Component')
-const builtinCommandRequirements = require('./requirements')
+const Eris = require('eris');
+const glob = require('glob');
+const path = require('path');
+const Logger = require('another-logger');
+const reload = require('require-reload')(require);
+const Command = require('./Command');
+const Category = require('./Category');
+const Component = require('./Component');
+const builtinCommandRequirements = require('./requirements');
 
-const DEFAULT_CATEGORY = 'Default'
+const DEFAULT_CATEGORY = 'Default';
 
 /**
  * Aghanim Client extends from Eris.Client
  * @extends Eris.Client
  */
 class Client extends Eris.Client {
-	/**
-	* Create a client instance.
-	* @class
-	* @param {string} token - The token used to log into the bot.
-	* @param {Object} options - Options to start the client with. This object is also passed to Eris.
-	*     If there are a aghanim.config.js/json in project root, that will be loaded instead object passed to constructor.
-	*     See Eris Client constructor options https://abal.moe/Eris/docs/Client
-	* @param {string} [options.prefix = ''] - The prefix the bot will respond to in
-	*     guilds for which there is no other confguration. (Currently everywhere)
-	* @param {boolean} [options.allowMention = false] - Whether or not the bot can respond
-	*     to messages starting with a mention of the bot.
-	* @param {boolean} [options.ignoreBots = true] - Whether or not the bot ignoresBots. Default: true
-	* @param {boolean} [options.ignoreSelf = true] - Whether or not the bot ignores self. Default: true
-	* @param {string} [options.helpMessage = '**Help**'] - Title for default command help Message
-	* @param {string} [options.helpMessageAfterCategories = '**Note**: Use \`${options.prefix}help <category>\` to see the commands']
-	* Message after categories in default command help message are shown
-	* @param {boolean} [options.helpDM = true] - Active direct message to default command help
-	* @param {boolean} [options.helpEnable = true] - Enable/disable default command help
-	* @param {boolean} [options.devLogs = false] - Enable/disable aghanim dev logs
-	*/
-	constructor(token, options = {}) {
-		// Attempt to load options from aghanim.config.js(on) file
-		let configurationFileFound = false
-		try {
-			options = require(`${process.cwd()}/aghanim.config`) /* eslint import/no-dynamic-require: "off", global-require : "off", no-param-reassign : "off" */
-		} catch (err) { } /* eslint no-empty: "off" */
+  /**
+   * Create a client instance.
+   * @class
+   * @param {string} token - The token used to log into the bot.
+   * @param {Object} options - Options to start the client with. This object is also passed to Eris.
+   *     If there are a aghanim.config.js/json in project root, that will be loaded instead object passed to constructor.
+   *     See Eris Client constructor options https://abal.moe/Eris/docs/Client
+   * @param {string} [options.prefix = ''] - The prefix the bot will respond to in
+   *     guilds for which there is no other confguration. (Currently everywhere)
+   * @param {boolean} [options.allowMention = false] - Whether or not the bot can respond
+   *     to messages starting with a mention of the bot.
+   * @param {boolean} [options.ignoreBots = true] - Whether or not the bot ignoresBots. Default: true
+   * @param {boolean} [options.ignoreSelf = true] - Whether or not the bot ignores self. Default: true
+   * @param {string} [options.helpMessage = '**Help**'] - Title for default command help Message
+   * @param {string} [options.helpMessageAfterCategories = '**Note**: Use \`${options.prefix}help <category>\` to see the commands']
+   * Message after categories in default command help message are shown
+   * @param {boolean} [options.helpDM = true] - Active direct message to default command help
+   * @param {boolean} [options.helpEnable = true] - Enable/disable default command help
+   * @param {boolean} [options.devLogs = false] - Enable/disable aghanim dev logs
+   */
+  constructor(token, options = {}) {
+    // Attempt to load options from aghanim.config.js(on) file
+    let configurationFileFound = false;
+    try {
+      options = require(`${process.cwd()}/aghanim.config`); /* eslint import/no-dynamic-require: "off", global-require : "off", no-param-reassign : "off" */
+    } catch (err) {} /* eslint no-empty: "off" */
 
-		super(token, options)
+    super(token, options);
 
-		options.devLogs = options.devLogs || false
+    options.devLogs = options.devLogs || false;
 
-		// Logger
-		this._logger = new Logger({
-			label: 'Aghanim',
-			timestamps: true,
-			levels: {
-				dev: { style: 'magenta' },
-				commandrunerror: { text: 'command:run:error', style: 'red' },
-				componentrunerror: { text: 'component:run:error', style: 'red' },
-				commandadderror: { text: 'command:add:error', style: 'red' },
-				componentadderror: { text: 'component:add:error', style: 'red' },
-				categoryadderror: { text: 'category:run:error', style: 'red' },
-			},
-			ignoredLevels: [options.devLogs ? '' : 'dev']
-		})
+    // Logger
+    this._logger = new Logger({
+      label: 'Aghanim',
+      timestamps: true,
+      levels: {
+        dev: { style: 'magenta' },
+        commandrunerror: { text: 'command:run:error', style: 'red' },
+        componentrunerror: { text: 'component:run:error', style: 'red' },
+        commandadderror: { text: 'command:add:error', style: 'red' },
+        componentadderror: { text: 'component:add:error', style: 'red' },
+        categoryadderror: { text: 'category:run:error', style: 'red' }
+      },
+      ignoredLevels: [options.devLogs ? '' : 'dev']
+    });
 
-		if(configurationFileFound){
-			this._logger.info('Loaded: aghanim.config.js(on)')
-		}
+    if (configurationFileFound) {
+      this._logger.info('Loaded: aghanim.config.js(on)');
+    }
 
-		/** @prop {string} - The prefix the bot will respond to in guilds
-		 * for which there is no other confguration. */
-		this.prefix = options.prefix || ''
-		/** @prop {Command[]} - An array of commands the bot will respond to. */
-		this.commands = []
-		/** @prop {Category[]} - Categories for commands. */
-		this.categories = []
-		/** @prop {Command[]} - An array of commands the bot will respond to. */
-		this.interactionCommands = []
-		/** @prop {Category[]} - Categories for commands. */
-		this.interactionCommandCategories = []
-		/** @prop {Object<Component>} - Components. */
-		this.components = {}
-		/** @prop {Object} - Setup */
-		this.setup = {}
-		// /** @prop {Object} - Context Extension */
-		// this.contextExtension = {}
+    /** @prop {string} - The prefix the bot will respond to in guilds
+     * for which there is no other confguration. */
+    this.prefix = options.prefix || '';
+    /** @prop {Command[]} - An array of commands the bot will respond to. */
+    this.commands = [];
+    /** @prop {Category[]} - Categories for commands. */
+    this.categories = [];
+    /** @prop {Command[]} - An array of commands the bot will respond to. */
+    this.interactionCommands = [];
+    /** @prop {Category[]} - Categories for commands. */
+    this.interactionCommandCategories = [];
+    /** @prop {Object<Component>} - Components. */
+    this.components = {};
+    /** @prop {Object} - Setup */
+    this.setup = {};
+    // /** @prop {Object} - Context Extension */
+    // this.contextExtension = {}
 
-		this._ready = false
-		this._commandsRequirements = {}
+    this._ready = false;
+    this._commandsRequirements = {};
 
-		// /** @prop {boolean} - Whether or not the bot can respond to messages
-		//  * starting with a mention of the bot. Defaults to true. */
-		// this.allowMention = options.allowMention === null ? false : options.allowMention
-		/** @prop {boolean} - Whether or not the bot ignores messages
+    // /** @prop {boolean} - Whether or not the bot can respond to messages
+    //  * starting with a mention of the bot. Defaults to true. */
+    // this.allowMention = options.allowMention === null ? false : options.allowMention
+    /** @prop {boolean} - Whether or not the bot ignores messages
 		 sent from bot accounts. Defaults to true.
 		 * @default true */
-		this.ignoreBots = options.ignoreBots !== undefined ? options.ignoreBots : true
-		/** @prop {boolean} - Ignore self
-		* @default true */
-		this.ignoreSelf = options.ignoreSelf !== undefined ? options.ignoreSelf : true
+    this.ignoreBots =
+      options.ignoreBots !== undefined ? options.ignoreBots : true;
+    /** @prop {boolean} - Ignore self
+     * @default true */
+    this.ignoreSelf =
+      options.ignoreSelf !== undefined ? options.ignoreSelf : true;
 
-		this.once('ready', () => {
-			if (this._ready) { return }
-			this._ready = true
-			/**
-			 * @prop {RegExp} - The RegExp used to tell whether or not a message starts
-			 *     with a mention of the bot. Only present after the 'ready' event.
-			 */
-			this.mentionPrefixRegExp = new RegExp(`^<@!?${this.user.id}>\\s?`)
+    this.once('ready', () => {
+      if (this._ready) {
+        return;
+      }
+      this._ready = true;
+      /**
+       * @prop {RegExp} - The RegExp used to tell whether or not a message starts
+       *     with a mention of the bot. Only present after the 'ready' event.
+       */
+      this.mentionPrefixRegExp = new RegExp(`^<@!?${this.user.id}>\\s?`);
 
-			this.getOAuthApplication().then((app) => {
-				/**
-				 * @prop {object} - The OAuth application information returned by
-				 *     Discord. Present some time after the ready event.
-				 * @prop {string} description - Discord App description
-				 * @prop {string} name - Discord App name
-				 * @prop {string} owner - Discord App owner
-				 * @prop {string} owner.id - Owner ID
-				 * @prop {string} owner.username - Owner username
-				 * @prop {string} owner.discriminator - Owner discriminator
-				 * @prop {string} owner.avatar - Owner avatar
-				 * @prop {boolean} bot_public - If app is public
-				 * @prop {boolean} bot_require_code_grant -
-				 * @prop {string} id - Discord App id
-				 * @prop {string} icon - Discord App icon
-				 */
-				this.app = app
-				/**
-				 * Owner description
-				 * @prop {string} id - Owner ID
-				 * @prop {string} username - Owner username
-				 * @prop {string} discriminator - Owner discriminator
-				 * @prop {string} avatar - Owner avatar
-				 * @prop {Ownersend} send - Send a message to Owner
-				 */
-				this.owner = Object.assign({}, this.app.owner)
-				this.getDMChannel(this.owner.id).then((channel) => {
-					/**
-					 * Function to send messages to owner
-					 * @callback Ownersend
-					 * @param  {string|EmbedMessageObject} content - Message content to send
-					 * @param  {object} file - File to send
-					 */
-					this.owner.send = function sendOwner(content, file) {
-						channel.createMessage(content, file)
-					}
-				})
+      this.getOAuthApplication().then((app) => {
+        /**
+         * @prop {object} - The OAuth application information returned by
+         *     Discord. Present some time after the ready event.
+         * @prop {string} description - Discord App description
+         * @prop {string} name - Discord App name
+         * @prop {string} owner - Discord App owner
+         * @prop {string} owner.id - Owner ID
+         * @prop {string} owner.username - Owner username
+         * @prop {string} owner.discriminator - Owner discriminator
+         * @prop {string} owner.avatar - Owner avatar
+         * @prop {boolean} bot_public - If app is public
+         * @prop {boolean} bot_require_code_grant -
+         * @prop {string} id - Discord App id
+         * @prop {string} icon - Discord App icon
+         */
+        this.app = app;
+        /**
+         * Owner description
+         * @prop {string} id - Owner ID
+         * @prop {string} username - Owner username
+         * @prop {string} discriminator - Owner discriminator
+         * @prop {string} avatar - Owner avatar
+         * @prop {Ownersend} send - Send a message to Owner
+         */
+        this.owner = Object.assign({}, this.app.owner);
+        this.getDMChannel(this.owner.id).then((channel) => {
+          /**
+           * Function to send messages to owner
+           * @callback Ownersend
+           * @param  {string|EmbedMessageObject} content - Message content to send
+           * @param  {object} file - File to send
+           */
+          this.owner.send = function sendOwner(content, file) {
+            channel.createMessage(content, file);
+          };
+        });
 
-				this.handleEvent('ready')()
-				this.registerInteractionCommands()
-			})
-		}).on('error', (err) => {
-			this._logger.error(err)
-			/**
-			 * Fired when there are an error
-			 * @event Client#aghanim:error
-			 * @param {object} err - Error
-			 * @param {Client} client - Client instance
-			 */
-			this.emit('aghanim:error', err, this)
-		}).on('messageCreate', this.handleMessage)
-			.on('messageReactionAdd', this.handleEvent('messageReactionAdd'))
-			.on('messageReactionRemove', this.handleEvent('messageReactionRemove'))
-			.on('guildCreate', this.handleEvent('guildCreate'))
-			.on('guildDelete', this.handleEvent('guildDelete'))
-			.on('guildMemberAdd', this.handleEvent('guildMemberAdd'))
-			.on('guildMemberRemove', this.handleEvent('guildMemberRemove'))
-			.on('interactionCreate', this.handleInteractionCreate)
+        this.handleEvent('ready')();
+        this.registerInteractionCommands();
+      });
+    })
+      .on('error', (err) => {
+        this._logger.error(err);
+        /**
+         * Fired when there are an error
+         * @event Client#aghanim:error
+         * @param {object} err - Error
+         * @param {Client} client - Client instance
+         */
+        this.emit('aghanim:error', err, this);
+      })
+      .on('messageCreate', this.handleMessage)
+      .on('messageReactionAdd', this.handleEvent('messageReactionAdd'))
+      .on('messageReactionRemove', this.handleEvent('messageReactionRemove'))
+      .on('guildCreate', this.handleEvent('guildCreate'))
+      .on('guildDelete', this.handleEvent('guildDelete'))
+      .on('guildMemberAdd', this.handleEvent('guildMemberAdd'))
+      .on('guildMemberRemove', this.handleEvent('guildMemberRemove'))
+      .on('interactionCreate', this.handleInteractionCreate);
 
-		this.setup.helpMessage = `${options.helpMessage || '**Help**'}\n\n`
-		this.setup.helpMessageAfterCategories = `${options.helpMessageAfterCategories || `**Note**: Use \`${this.prefix}help <category>\` to see those commands`}\n\n`
-		this.setup.helpDM = options.helpDM || false
-		if (!options.disableHelp) {
-			// Add default help command to bot
-			this.addCommand(new Command('help', {}, async (msg, args, client, command) => { /* eslint no-unused-vars: "off" */
-				const categories = client.categories.map(c => c.name.toLowerCase())
-				const query = args.from(1).toLowerCase()
-				let { helpMessage } = client.setup
-				if (categories.includes(query)) {
-					const cmds = client.getCommandsOfCategories(query)
-					if (!cmds) {
-						helpMessage += client.categories.filter(c => !c.hide) /* eslint prefer-template: "off", max-len: "off" */
-							.map(c => `**${c.name}** \`${client.prefix}help ${c.name.toLowerCase()}\` - ${c.help}`)
-							.join('\n') + '\n\n' + client.setup.helpMessageAfterCategories
-					} else {
-						helpMessage += cmds.filter(c => !c.hide).map(c => `\`${client.prefix}${c.name}${c.args ? ' ' + c.args : ''}\` - ${c.help}${c.childs.length ? '\n' + c.childs.filter(s => !s.hide).map(s => `  · \`${s.name}${s.args ? ' ' + s.args : ''}\` - ${s.help}`).join('\n') : ''}`)
-							.join('\n')
-					}
-				} else if (categories.length) {
-					helpMessage += client.categories.filter(c => !c.hide).map(c => `**${c.name}** \`${client.prefix}help ${c.name.toLowerCase()}\` - ${c.help}`).join('\n') + '\n\n' + client.setup.helpMessageAfterCategories
-				} else {
-					const cmds = client.getCommandsOfCategories('Default')
-					if (!cmds) {
-						helpMessage += 'No commands'
-					} else {
-						helpMessage += cmds.filter(c => !c.hide).map(c => `\`${client.prefix}${c.name}${c.args ? ' ' + c.args : ''}\` - ${c.help}${c.childs.length ? '\n' + c.childs.filter(s => !s.hide).map(s => `  · \`${s.name}${s.args ? ' ' + s.args : ''}\` - ${s.help}`).join('\n') : ''}`)
-							.join('\n')
-					}
-				}
-				if (!client.setup.helpDM) {
-					return msg.channel.createMessage(helpMessage)
-				}
-				return msg.author.getDMChannel().then(channel => channel.createMessage(helpMessage))
-			}))
-		}
-	}
+    this.setup.helpMessage = `${options.helpMessage || '**Help**'}\n\n`;
+    this.setup.helpMessageAfterCategories = `${
+      options.helpMessageAfterCategories ||
+      `**Note**: Use \`${this.prefix}help <category>\` to see those commands`
+    }\n\n`;
+    this.setup.helpDM = options.helpDM || false;
+    if (!options.disableHelp) {
+      // Add default help command to bot
+      this.addCommand(
+        new Command('help', {}, async (msg, args, client, command) => {
+          /* eslint no-unused-vars: "off" */
+          const categories = client.categories.map((c) => c.name.toLowerCase());
+          const query = args.from(1).toLowerCase();
+          let { helpMessage } = client.setup;
+          if (categories.includes(query)) {
+            const cmds = client.getCommandsOfCategories(query);
+            if (!cmds) {
+              helpMessage +=
+                client.categories
+                  .filter(
+                    (c) => !c.hide
+                  ) /* eslint prefer-template: "off", max-len: "off" */
+                  .map(
+                    (c) =>
+                      `**${c.name}** \`${
+                        client.prefix
+                      }help ${c.name.toLowerCase()}\` - ${c.help}`
+                  )
+                  .join('\n') +
+                '\n\n' +
+                client.setup.helpMessageAfterCategories;
+            } else {
+              helpMessage += cmds
+                .filter((c) => !c.hide)
+                .map(
+                  (c) =>
+                    `\`${client.prefix}${c.name}${
+                      c.args ? ' ' + c.args : ''
+                    }\` - ${c.help}${
+                      c.childs.length
+                        ? '\n' +
+                          c.childs
+                            .filter((s) => !s.hide)
+                            .map(
+                              (s) =>
+                                `  · \`${s.name}${
+                                  s.args ? ' ' + s.args : ''
+                                }\` - ${s.help}`
+                            )
+                            .join('\n')
+                        : ''
+                    }`
+                )
+                .join('\n');
+            }
+          } else if (categories.length) {
+            helpMessage +=
+              client.categories
+                .filter((c) => !c.hide)
+                .map(
+                  (c) =>
+                    `**${c.name}** \`${
+                      client.prefix
+                    }help ${c.name.toLowerCase()}\` - ${c.help}`
+                )
+                .join('\n') +
+              '\n\n' +
+              client.setup.helpMessageAfterCategories;
+          } else {
+            const cmds = client.getCommandsOfCategories('Default');
+            if (!cmds) {
+              helpMessage += 'No commands';
+            } else {
+              helpMessage += cmds
+                .filter((c) => !c.hide)
+                .map(
+                  (c) =>
+                    `\`${client.prefix}${c.name}${
+                      c.args ? ' ' + c.args : ''
+                    }\` - ${c.help}${
+                      c.childs.length
+                        ? '\n' +
+                          c.childs
+                            .filter((s) => !s.hide)
+                            .map(
+                              (s) =>
+                                `  · \`${s.name}${
+                                  s.args ? ' ' + s.args : ''
+                                }\` - ${s.help}`
+                            )
+                            .join('\n')
+                        : ''
+                    }`
+                )
+                .join('\n');
+            }
+          }
+          if (!client.setup.helpDM) {
+            return msg.channel.createMessage(helpMessage);
+          }
+          return msg.author
+            .getDMChannel()
+            .then((channel) => channel.createMessage(helpMessage));
+        })
+      );
+    }
+  }
 
-	async registerInteractionCommands(){
-		
-		const interactionCommandScopeGlobal = this.interactionCommands
-			.filter(interactionCommand => !interactionCommand.scope
-				|| (interactionCommand.scope && interactionCommand.scope.type === 'global')
-			)
-		const interactionCommandScopeGuilds = this.interactionCommands
-			.filter(interactionCommand => (
-				interactionCommand.scope
-				&& interactionCommand.scope.type === 'guild'
-				)
-			)
-			
-		if(interactionCommandScopeGlobal.length){
-			try{
-				// TODO: register, edit and delete glboal commands
-				this._logger.debug(`Command interaction scope global: ${interactionCommandScopeGlobal.map(({name}) => name).join(', ')}`)
-				const globalCommands = await this.getCommands();
-				for(const interactionCommand of interactionCommandScopeGlobal){
-					const { name, description, type, options, customOptions } = interactionCommand;
-					/* Global command to create */
-					if(globalCommands.every(command => command.name !== interaction.name)){
-						this.createCommand({name, description, type, options}).then(() => {
-							this._logger.info(`Command interaction scope global created: ${name}`)
-						})
-					/* Global command to edit */
-					}else if (customOptions && customOptions['dev.forceUpdate']){
-						const command = globalCommands.find(command => command.name === interaction.name)
-						this.editCommand(command.id, {name, description, type, options}).then(() => {
-							this._logger.info(`Command interaction scope global edited: ${name}`)
-						})
-					/* Global command to ignore the editing */
-					}else{
-						this._logger.debug(`Command interaction scope global skipped to updating: ${name}. Use customOptions['dev.forceUpdate'] = true`)
-					}
-				}
+  async registerInteractionCommands() {
+    const interactionCommandScopeGlobal = this.interactionCommands.filter(
+      (interactionCommand) =>
+        !interactionCommand.scope ||
+        (interactionCommand.scope && interactionCommand.scope.type === 'global')
+    );
+    const interactionCommandScopeGuilds = this.interactionCommands.filter(
+      (interactionCommand) =>
+        interactionCommand.scope && interactionCommand.scope.type === 'guild'
+    );
 
-				/* Glboal commands to remove */
-				const globalCommandsToRemove = globalCommands
-					// TODO: remove the commands that are disabled
-					.filter(globalCommand => !interactionCommandScopeGlobal.some(interactionCommand => interactionCommand.name === globalCommand.name)) 
-				if(globalCommandsToRemove.length){
-					this._logger.warn(`Command interaction scope global commands to remove: ${globalCommandsToRemove.map(({name}) => name).join(', ')}`)
-					this._logger.debug(`Command interaction scope global registered commands: ${globalCommands.map(({name}) => name).join(', ')}`)
-					globalCommandsToRemove.forEach(globalCommand => {
-						this._logger.debug(`Command interaction scope global to remove ${guildCommand.name}`)
-						this.deleteCommand(guildID, globalCommand.id).then(() => {
-							this._logger.info(`Command interaction scope global removed: ${guildCommand.name}`)
-						}).catch((error) => {
-							this._logger.error(`Command interaction scope global error removing ${guildCommand.name}: ${error}`)
-						})
-					})
-				}
-			}catch(error){
+    if (interactionCommandScopeGlobal.length) {
+      try {
+        // TODO: register, edit and delete glboal commands
+        this._logger.debug(
+          `Command interaction scope global: ${interactionCommandScopeGlobal
+            .map(({ name }) => name)
+            .join(', ')}`
+        );
+        const globalCommands = await this.getCommands();
+        for (const interactionCommand of interactionCommandScopeGlobal) {
+          const { name, description, type, options, customOptions } =
+            interactionCommand;
+          /* Global command to create */
+          if (
+            globalCommands.every((command) => command.name !== interaction.name)
+          ) {
+            this.createCommand({ name, description, type, options }).then(
+              () => {
+                this._logger.info(
+                  `Command interaction scope global created: ${name}`
+                );
+              }
+            );
+            /* Global command to edit */
+          } else if (customOptions && customOptions['dev.forceUpdate']) {
+            const command = globalCommands.find(
+              (command) => command.name === interaction.name
+            );
+            this.editCommand(command.id, {
+              name,
+              description,
+              type,
+              options
+            }).then(() => {
+              this._logger.info(
+                `Command interaction scope global edited: ${name}`
+              );
+            });
+            /* Global command to ignore the editing */
+          } else {
+            this._logger.debug(
+              `Command interaction scope global skipped to updating: ${name}. Use customOptions['dev.forceUpdate'] = true`
+            );
+          }
+        }
 
-			}
-		}
+        /* Glboal commands to remove */
+        const globalCommandsToRemove = globalCommands
+          // TODO: remove the commands that are disabled
+          .filter(
+            (globalCommand) =>
+              !interactionCommandScopeGlobal.some(
+                (interactionCommand) =>
+                  interactionCommand.name === globalCommand.name
+              )
+          );
+        if (globalCommandsToRemove.length) {
+          this._logger.warn(
+            `Command interaction scope global commands to remove: ${globalCommandsToRemove
+              .map(({ name }) => name)
+              .join(', ')}`
+          );
+          this._logger.debug(
+            `Command interaction scope global registered commands: ${globalCommands
+              .map(({ name }) => name)
+              .join(', ')}`
+          );
+          globalCommandsToRemove.forEach((globalCommand) => {
+            this._logger.debug(
+              `Command interaction scope global to remove ${guildCommand.name}`
+            );
+            this.deleteCommand(guildID, globalCommand.id)
+              .then(() => {
+                this._logger.info(
+                  `Command interaction scope global removed: ${guildCommand.name}`
+                );
+              })
+              .catch((error) => {
+                this._logger.error(
+                  `Command interaction scope global error removing ${guildCommand.name}: ${error}`
+                );
+              });
+          });
+        }
+      } catch (error) {}
+    }
 
-		if(interactionCommandScopeGuilds.length){
-			const guildIDs = new Set()
-			interactionCommandScopeGuilds.forEach(interactionCommandScopeGuild => guildIDs.add(...interactionCommandScopeGuild.scope.guildIDs))
+    if (interactionCommandScopeGuilds.length) {
+      const guildIDs = new Set();
+      interactionCommandScopeGuilds.forEach((interactionCommandScopeGuild) =>
+        guildIDs.add(...interactionCommandScopeGuild.scope.guildIDs)
+      );
+      [...guildIDs].forEach(async (guildID) => {
+        try {
+          const interactionCommandsGuild = interactionCommandScopeGuilds.filter(
+            (interactionCommandScopeGuild) =>
+              interactionCommandScopeGuild.scope.guildIDs.includes(guildID)
+          );
+          this._logger.debug(
+            `Command interaction scope guild ID (${guildID}): ${interactionCommandsGuild
+              .map(({ name }) => name)
+              .join(', ')}`
+          );
 
-			;[...guildIDs].forEach(async guildID => {
-				try{
-					const interactionCommandsGuild = interactionCommandScopeGuilds
-						.filter(interactionCommandScopeGuild => interactionCommandScopeGuild.scope.guildIDs.includes(guildID))
-					this._logger.debug(`Command interaction scope guild ID (${guildID}): ${interactionCommandsGuild.map(({name}) => name).join(', ')}`)
-	
-					const guildCommands = await this.getGuildCommands(guildID)
-					
-					/* Guild command defined */
-					if(interactionCommandsGuild.length){
-						for (const interaction of interactionCommandsGuild) {
-							const { name, description, type, options, customOptions } = interaction;
-							/* Guild command to create */
-							if(guildCommands.every(command => command.name !== interaction.name)){
-								this.createGuildCommand(guildID, {name, description, type, options}).then(() => {
-									this._logger.info(`Command interaction scope guild ID (${guildID}) created: ${name}`)
-								})
-							/* Guild command to edit */
-							}else if (customOptions && customOptions['dev.forceUpdate']){
-								const command = guildCommands.find(command => command.name === interaction.name)
-								this.editGuildCommand(guildID, command.id, {name, description, type, options}).then(() => {
-									this._logger.info(`Command interaction scope guild ID (${guildID}) edited: ${name}`)
-								})
-							/* Guild command to ignore the editing */
-							}else{
-								this._logger.debug(`Command interaction scope guild ID (${guildID}) skipped to updating: ${name}. Use customOptions['dev.forceUpdate'] = true`)
-							}
-						}
-					}
-					
-					/* Guild commands to remove */
-					const guildCommandsToRemove = guildCommands
-						// TODO: remove the commands that are disabled
-						.filter(guildCommand => !interactionCommandsGuild.some(interactionCommandGuild => interactionCommandGuild.name === guildCommand.name)) 
-					if(guildCommandsToRemove.length){
-						this._logger.warn(`Command interaction scope guild ID (${guildID}) guild commands to remove: ${JguildCommandsToRemove.map(({name}) => name).join(', ')}`)
-						this._logger.debug(`Command interaction scope guild ID (${guildID}) registered commands: ${guildCommands.map(({name}) => name).join(', ')}`)
-						guildCommandsToRemove.forEach(guildCommand => {
-							this._logger.debug(`Command interaction scope guild ID (${guildID}) to remove ${guildCommand.name}`)
-							this.deleteGuildCommand(guildID, guildCommand.id).then(() => {
-								this._logger.info(`Command interaction scope guild ID (${guildID}) removed: ${guildCommand.name}`)
-							}).catch((error) => {
-								this._logger.error(`Command interaction scope guild ID (${guildID}) error removing ${guildCommand.name}: ${error}`)
-							})
-						})
-					}
-				}catch(error){
-					
-				}
+          const guildCommands = await this.getGuildCommands(guildID);
 
-			})
-		}
-	}
+          /* Guild command defined */
+          if (interactionCommandsGuild.length) {
+            for (const interaction of interactionCommandsGuild) {
+              const { name, description, type, options, customOptions } =
+                interaction;
+              this._logger.debug(
+                `Command interaction scope guild ID (${guildID}) check registration: ${name}`
+              );
+              try {
+                /* Guild command to create */
+                if (
+                  guildCommands.every(
+                    (command) => command.name !== interaction.name
+                  )
+                ) {
+                  this._logger.debug(
+                    `Command interaction scope guild ID (${guildID}) check registration: ${name} creating`
+                  );
+                  await this.createGuildCommand(guildID, {
+                    name,
+                    description,
+                    type,
+                    options
+                  });
+                  this._logger.info(
+                    `Command interaction scope guild ID (${guildID}) created: ${name}`
+                  );
+                  /* Guild command to edit */
+                } else if (customOptions && customOptions['dev.forceUpdate']) {
+                  const command = guildCommands.find(
+                    (command) => command.name === interaction.name
+                  );
+                  this._logger.debug(
+                    `Command interaction scope guild ID (${guildID}) check registration: ${name} editing`
+                  );
+                  await this.editGuildCommand(guildID, command.id, {
+                    name,
+                    description,
+                    type,
+                    options
+                  });
+                  this._logger.info(
+                    `Command interaction scope guild ID (${guildID}) edited: ${name}`
+                  );
+                  /* Guild command to ignore the editing */
+                } else {
+                  this._logger.debug(
+                    `Command interaction scope guild ID (${guildID}) skipped to updating: ${name}. Use customOptions['dev.forceUpdate'] = true`
+                  );
+                }
+              } catch (error) {
+                this._logger.debug(
+                  `Command interaction scope guild ID (${guildID}) check registration: ${name} error: ${error.message}`
+                );
+                this.emit(
+                  'aghanim:command-interaction:error:register',
+                  interaction,
+                  this,
+                  { guildID, error }
+                );
+              }
+            }
+          }
 
-	/**
-	 * Given a message, see if there is a command and process it if so.
-	 * @param {Object} msg - The message object recieved from Eris.
-	 * @return {*} - Returns
-	 */
-	async handleMessage(msg) {
-		if (!this._ready) return
-		if (!this.triggerMessageCreate(msg, this)) { return }
-		this.handleEvent('messageCreate')(msg)
+          /* Guild commands to remove */
+          const guildCommandsToRemove = guildCommands
+            // TODO: remove the commands that are disabled
+            .filter(
+              (guildCommand) =>
+                !interactionCommandsGuild.some(
+                  (interactionCommandGuild) =>
+                    interactionCommandGuild.name === guildCommand.name
+                )
+            );
+          if (guildCommandsToRemove.length) {
+            this._logger.warn(
+              `Command interaction scope guild ID (${guildID}) guild commands to remove: ${guildCommandsToRemove
+                .map(({ name }) => name)
+                .join(', ')}`
+            );
+            this._logger.debug(
+              `Command interaction scope guild ID (${guildID}) registered commands: ${guildCommands
+                .map(({ name }) => name)
+                .join(', ')}`
+            );
+            for (const guildCommand of guildCommandsToRemove) {
+              try {
+                this._logger.debug(
+                  `Command interaction scope guild ID (${guildID}) to remove ${guildCommand.name}`
+                );
+                await this.deleteGuildCommand(guildID, guildCommand.id);
+                this._logger.info(
+                  `Command interaction scope guild ID (${guildID}) removed: ${guildCommand.name}`
+                );
+              } catch (error) {
+                this._logger.error(
+                  `Command interaction scope guild ID (${guildID}) error removing ${guildCommand.name}: ${error}`
+                );
+              }
+            }
+          }
+        } catch (error) {
+          // TODO: handle the error
+        }
+      });
+    }
+  }
 
-		if (this.ignoreBots && msg.author.bot) return
-		if (this.ignoreSelf && msg.author.id === this.user.id) return
+  /**
+   * Given a message, see if there is a command and process it if so.
+   * @param {Object} msg - The message object recieved from Eris.
+   * @return {*} - Returns
+   */
+  async handleMessage(msg) {
+    if (!this._ready) return;
+    if (!this.triggerMessageCreate(msg, this)) {
+      return;
+    }
+    this.handleEvent('messageCreate')(msg);
 
-		const args = this.createCommandArgs(msg)
-		if (!args) { return }
-		const command = this.getCommandByName(args[0], args[1])
-		if (!command) { return }
-		// const context = Object.assign({
-		// 	command,
-		// 	client: this
-		// }, this.contextExtension)
-		try {
-			/**
-			 * Fired before a command is executed. Can't stop command of running
-			 * @event Client#aghanim:command:prereq
-			 * @param {object} msg - Eris Message object
-			 * @param {args} args - Args object
-			 * @param {Client} client - Client instance
-			 * @param {Command} command - Command
-			 */
-			this.emit('aghanim:command:prereq', msg, args, this, command)
-			await command.runHook('prereq', msg, args, this, command)
-			const notpass = !(await this.checkRequirements(msg, args, this, command))
-			if (notpass) return
-			/**
-			 * Fired before a command is executed. Can't stop command of running
-			 * @event Client#aghanim:command:prerun
-			 * @param {object} msg - Eris Message object
-			 * @param {args} args - Args object
-			 * @param {Client} client - Client instance
-			 * @param {Command} command - Command
-			 */
-			this.emit('aghanim:command:prerun', msg, args, this, command)
-			await command.runHook('prerun', msg, args, this, command)
-			if (command.response) {
-				switch (typeof command.response) {
-				case 'string': {
-					await msg.channel.createMessage(command.response)
-					break
-				}
-				case 'function': {
-					const response = command.response(msg, args, this, command)
-					await msg.channel.createMessage(response)
-					break
-				}
-				case 'object': {
-					await msg.channel.createMessage(command.response)
-					break
-				}
-				default: {}
-				}
-			} else if (command.responseDM) {
-				switch (typeof command.responseDM) {
-				case 'string': {
-					await msg.channel.createMessage(command.responseDM)
-					break
-				}
-				case 'function': {
-					const responseDM = command.responseDM(msg, args, this, command)
-					await msg.channel.createMessage(responseDM)
-					break
-				}
-				case 'object': {
-					await msg.channel.createMessage(command.responseDM)
-					break
-				}
-				default: {}
-				}
-			} else {
-				await command.run(msg, args, this, command)
-			}
-			/**
-			 * Fired after a command is executed. Don't cant stop command of running
-			 * @event Client#aghanim:command:executed
-			 * @param {object} msg - Eris Message object
-			 * @param {args} args - Args object
-			 * @param {Client} client - Client instance
-			 * @param {Command} command - Command
-			 */
-			this.emit('aghanim:command:executed', msg, args, this, command)
-			await command.runHook('executed', msg, args, this, command)
-		} catch (err) {
-			/**
-			 * Fired when a command got an error executing the run function
-			 * @event Client#aghanim:command:error
-			 * @param {object} err - Error
-			 * @param {object} msg - Eris Message object
-			 * @param {args} args - Args object
-			 * @param {Client} client - Client instance
-			 * @param {Command} command - Command
-			 */
-			this._logger.commandrunerror(`${command.name} - ${err} - ${err.stack}`)
-			this.emit('aghanim:command:error', err, msg, args, this, command)
-			try {
-				await command.runHook('error', msg, args, this, command, err)
-			} catch (errhook) {
-				this._logger.commandrunerror(`${command.name} - ${errhook} - ${errhook.stack}`)
-				this.emit('aghanim:command:error', errhook, msg, args, this, command)
-			}
-		}
-	}
+    if (this.ignoreBots && msg.author.bot) return;
+    if (this.ignoreSelf && msg.author.id === this.user.id) return;
 
-	/**
-	 * Given a message, see if there is a command and process it if so.
-	 * @param {Object} interaction - The interaction object recieved from Eris.
-	 * @return {*} - Returns
-	 */
-	 async handleInteractionCreate(interaction) {
-		if(interaction instanceof Eris.CommandInteraction) {
-			const interactionCommand = this.interactionCommands.find(interactionCommand => interactionCommand.name === interaction.data.name);
-			if(!interactionCommand){
-				this._logger.warn(`Command interaction triggered but the runner was not found: ${interaction.data.name}`)
-				this.emit('aghanim:command-interaction:triggered-not-found', interaction, this, interactionCommand)
-				return;
-			};
-			interaction.user = interaction.user || interaction.member.user
-			this._logger.debug(`Command interaction triggered: ${interactionCommand.name}`)
-			this.emit('aghanim:command-interaction:triggered', interaction, this, interactionCommand)
-			try{
-				await interactionCommand.runHook('trigger', interaction, this, interactionCommand)
-				interactionCommand.customOptions && interactionCommand.customOptions.defer && await interaction.defer()
+    const args = this.createCommandArgs(msg);
+    if (!args) {
+      return;
+    }
+    const command = this.getCommandByName(args[0], args[1]);
+    if (!command) {
+      return;
+    }
+    // const context = Object.assign({
+    // 	command,
+    // 	client: this
+    // }, this.contextExtension)
+    try {
+      /**
+       * Fired before a command is executed. Can't stop command of running
+       * @event Client#aghanim:command:prereq
+       * @param {object} msg - Eris Message object
+       * @param {args} args - Args object
+       * @param {Client} client - Client instance
+       * @param {Command} command - Command
+       */
+      this.emit('aghanim:command:prereq', msg, args, this, command);
+      await command.runHook('prereq', msg, args, this, command);
+      const notpass = !(await this.checkRequirements(msg, args, this, command));
+      if (notpass) return;
+      /**
+       * Fired before a command is executed. Can't stop command of running
+       * @event Client#aghanim:command:prerun
+       * @param {object} msg - Eris Message object
+       * @param {args} args - Args object
+       * @param {Client} client - Client instance
+       * @param {Command} command - Command
+       */
+      this.emit('aghanim:command:prerun', msg, args, this, command);
+      await command.runHook('prerun', msg, args, this, command);
+      if (command.response) {
+        switch (typeof command.response) {
+          case 'string': {
+            await msg.channel.createMessage(command.response);
+            break;
+          }
+          case 'function': {
+            const response = command.response(msg, args, this, command);
+            await msg.channel.createMessage(response);
+            break;
+          }
+          case 'object': {
+            await msg.channel.createMessage(command.response);
+            break;
+          }
+          default: {
+          }
+        }
+      } else if (command.responseDM) {
+        switch (typeof command.responseDM) {
+          case 'string': {
+            await msg.channel.createMessage(command.responseDM);
+            break;
+          }
+          case 'function': {
+            const responseDM = command.responseDM(msg, args, this, command);
+            await msg.channel.createMessage(responseDM);
+            break;
+          }
+          case 'object': {
+            await msg.channel.createMessage(command.responseDM);
+            break;
+          }
+          default: {
+          }
+        }
+      } else {
+        await command.run(msg, args, this, command);
+      }
+      /**
+       * Fired after a command is executed. Don't cant stop command of running
+       * @event Client#aghanim:command:executed
+       * @param {object} msg - Eris Message object
+       * @param {args} args - Args object
+       * @param {Client} client - Client instance
+       * @param {Command} command - Command
+       */
+      this.emit('aghanim:command:executed', msg, args, this, command);
+      await command.runHook('executed', msg, args, this, command);
+    } catch (err) {
+      /**
+       * Fired when a command got an error executing the run function
+       * @event Client#aghanim:command:error
+       * @param {object} err - Error
+       * @param {object} msg - Eris Message object
+       * @param {args} args - Args object
+       * @param {Client} client - Client instance
+       * @param {Command} command - Command
+       */
+      this._logger.commandrunerror(`${command.name} - ${err} - ${err.stack}`);
+      this.emit('aghanim:command:error', err, msg, args, this, command);
+      try {
+        await command.runHook('error', msg, args, this, command, err);
+      } catch (errhook) {
+        this._logger.commandrunerror(
+          `${command.name} - ${errhook} - ${errhook.stack}`
+        );
+        this.emit('aghanim:command:error', errhook, msg, args, this, command);
+      }
+    }
+  }
 
-				if (interactionCommand.requirements && interactionCommand.requirements.length){
-					for(const requirement of interactionCommand.requirements){
-						if(!(await requirement.validate(interaction, this, interactionCommand, requirement))){
-							if(requirement.response){
-								switch (typeof requirement.response) {
-									case 'string':{
-										return await interaction.createMessage(requirement.response)
-										break;
-									}
-									case 'object':{
-										return await interaction.createMessage(requirement.response)
-										break;
-									}
-									case 'function':{
-										const interactionResponse = await requirement.response(interaction, this, interactionCommand, requirement)
-										return await interaction.createMessage(interactionResponse)
-										break;
-									}
-									default:
-										break;
-								}
-							}/*else if(requirement.run){
+  /**
+   * Given a message, see if there is a command and process it if so.
+   * @param {Object} interaction - The interaction object recieved from Eris.
+   * @return {*} - Returns
+   */
+  async handleInteractionCreate(interaction) {
+    if (interaction instanceof Eris.CommandInteraction) {
+      const interactionCommand = this.interactionCommands.find(
+        (interactionCommand) =>
+          interactionCommand.name === interaction.data.name
+      );
+      if (!interactionCommand) {
+        this._logger.warn(
+          `Command interaction triggered but the runner was not found: ${interaction.data.name}`
+        );
+        this.emit(
+          'aghanim:command-interaction:triggered-not-found',
+          interaction,
+          this,
+          interactionCommand
+        );
+        return;
+      }
+      interaction.user = interaction.user || interaction.member.user;
+      this._logger.debug(
+        `Command interaction triggered: ${interactionCommand.name}`
+      );
+      this.emit(
+        'aghanim:command-interaction:triggered',
+        interaction,
+        this,
+        interactionCommand
+      );
+      try {
+        await interactionCommand.runHook(
+          'trigger',
+          interaction,
+          this,
+          interactionCommand
+        );
+        interactionCommand.customOptions &&
+          interactionCommand.customOptions.defer &&
+          (await interaction.defer());
+
+        if (
+          interactionCommand.requirements &&
+          interactionCommand.requirements.length
+        ) {
+          for (const requirement of interactionCommand.requirements) {
+            if (
+              !(await requirement.validate(
+                interaction,
+                this,
+                interactionCommand,
+                requirement
+              ))
+            ) {
+              if (requirement.response) {
+                switch (typeof requirement.response) {
+                  case 'string': {
+                    return await interaction.createMessage(
+                      requirement.response
+                    );
+                    break;
+                  }
+                  case 'object': {
+                    return await interaction.createMessage(
+                      requirement.response
+                    );
+                    break;
+                  }
+                  case 'function': {
+                    const interactionResponse = await requirement.response(
+                      interaction,
+                      this,
+                      interactionCommand,
+                      requirement
+                    );
+                    return await interaction.createMessage(interactionResponse);
+                    break;
+                  }
+                  default:
+                    break;
+                }
+              } /*else if(requirement.run){
 								switch (typeof requirement.response) {
 									case 'string':{
 										return interaction.response
@@ -487,575 +725,739 @@ class Client extends Eris.Client {
 										break;
 								}
 							}*/
-						}
-					}
-				}
-				this._logger.debug(`Command interaction executing: ${interactionCommand.name}`)
-				this.emit('aghanim:command-interaction:executing', interaction, this, interactionCommand)
-				await interactionCommand.run(interaction, this, interactionCommand);
-				this._logger.info(`Command interaction executed: ${interactionCommand.name}`)
-				this.emit('aghanim:command-interaction:executed', interaction, this, interactionCommand)
-				this._logger.debug(`Command interaction running hook: execute: ${interactionCommand.name}`)
-				await interactionCommand.runHook('execute', interaction, this, interactionCommand)
-				this._logger.debug(`Command interaction run hook: execute: ${interactionCommand.name}`)
-			}catch(err){
-			/**
-			 * Fired when a command got an error executing the run function
-			 * @event Client#aghanim:command:error
-			 * @param {object} err - Error
-			 * @param {object} msg - Eris Message object
-			 * @param {args} args - Args object
-			 * @param {Client} client - Client instance
-			 * @param {Command} command - Command
-			 */
-				this._logger.commandrunerror(`${interactionCommand.name} - ${err} - ${err.stack}`)
-				this.emit('aghanim:command-interaction:error', err, interaction, this, interactionCommand)
-				try {
-					await interactionCommand.runHook('error', interaction, this, interactionCommand, err)
-				} catch (errhook) {
-					this._logger.commandrunerror(`${interactionCommand.name} - ${errhook} - ${errhook.stack}`)
-					this.emit('aghanim:command-interaction:error', errhook, interaction, this, interactionCommand)
-				}
-			}
-		};
-	}
+            }
+          }
+        }
+        this._logger.debug(
+          `Command interaction executing: ${interactionCommand.name}`
+        );
+        this.emit(
+          'aghanim:command-interaction:executing',
+          interaction,
+          this,
+          interactionCommand
+        );
+        await interactionCommand.run(interaction, this, interactionCommand);
+        this._logger.info(
+          `Command interaction executed: ${interactionCommand.name}`
+        );
+        this.emit(
+          'aghanim:command-interaction:executed',
+          interaction,
+          this,
+          interactionCommand
+        );
+        this._logger.debug(
+          `Command interaction running hook: execute: ${interactionCommand.name}`
+        );
+        await interactionCommand.runHook(
+          'execute',
+          interaction,
+          this,
+          interactionCommand
+        );
+        this._logger.debug(
+          `Command interaction run hook: execute: ${interactionCommand.name}`
+        );
+      } catch (err) {
+        /**
+         * Fired when a command got an error executing the run function
+         * @event Client#aghanim:command:error
+         * @param {object} err - Error
+         * @param {object} msg - Eris Message object
+         * @param {args} args - Args object
+         * @param {Client} client - Client instance
+         * @param {Command} command - Command
+         */
+        this._logger.commandrunerror(
+          `${interactionCommand.name} - ${err} - ${err.stack}`
+        );
+        this.emit(
+          'aghanim:command-interaction:error',
+          err,
+          interaction,
+          this,
+          interactionCommand
+        );
+        try {
+          await interactionCommand.runHook(
+            'error',
+            interaction,
+            this,
+            interactionCommand,
+            err
+          );
+        } catch (errhook) {
+          this._logger.commandrunerror(
+            `${interactionCommand.name} - ${errhook} - ${errhook.stack}`
+          );
+          this.emit(
+            'aghanim:command-interaction:error',
+            errhook,
+            interaction,
+            this,
+            interactionCommand
+          );
+        }
+      }
+    }
+  }
 
-	handleEvent(eventname) {
-		return (...args) => {
-			Object.keys(this.components)
-				.map(componentName => this.components[componentName])
-				.filter(component => component[eventname] && component.enable)
-				.forEach(async (component) => {
-					try {
-						await component[eventname](...args, this)
-					} catch (err) {
-						this._logger.componentrunerror(`${component.constructor.name} (${eventname}) - ${err}`)
-						/**
-						 * Fired when a component get an error to be executed
-						 * @event Client#aghanim:component:error
-						 * @param {object} err - Error
-						 * @param {string} eventname - Name of Eris event
-						 * @param {Client} client - Client instance
-						 * @param {Component} component - Component
-						 */
-						this.emit('aghanim:component:error', err, eventname, this, component)
-					}
-				})
-		}
-	}
+  handleEvent(eventname) {
+    return (...args) => {
+      Object.keys(this.components)
+        .map((componentName) => this.components[componentName])
+        .filter((component) => component[eventname] && component.enable)
+        .forEach(async (component) => {
+          try {
+            await component[eventname](...args, this);
+          } catch (err) {
+            this._logger.componentrunerror(
+              `${component.constructor.name} (${eventname}) - ${err}`
+            );
+            /**
+             * Fired when a component get an error to be executed
+             * @event Client#aghanim:component:error
+             * @param {object} err - Error
+             * @param {string} eventname - Name of Eris event
+             * @param {Client} client - Client instance
+             * @param {Component} component - Component
+             */
+            this.emit(
+              'aghanim:component:error',
+              err,
+              eventname,
+              this,
+              component
+            );
+          }
+        });
+    };
+  }
 
-	/**
-	 * Extend default args object.
-	 * @param {args} args - Args object.
-	 * @param {msg} msg - Eris Message.
-	 * @param {Client} client - Client instance.
-	 */
-	extendCommandArgs(args, msg, client) { } /* eslint class-methods-use-this: "off" */
+  /**
+   * Extend default args object.
+   * @param {args} args - Args object.
+   * @param {msg} msg - Eris Message.
+   * @param {Client} client - Client instance.
+   */
+  extendCommandArgs(
+    args,
+    msg,
+    client
+  ) {} /* eslint class-methods-use-this: "off" */
 
-	_addFromDirectory(dirname, func) {
-		if (!dirname.endsWith('/')) dirname += '/'
-		const pattern = `${dirname}*.js`
-		const filenames = glob.sync(pattern)
-		filenames.forEach(filename => func(filename))
-	}
+  _addFromDirectory(dirname, func) {
+    if (!dirname.endsWith('/')) dirname += '/';
+    const pattern = `${dirname}*.js`;
+    const filenames = glob.sync(pattern);
+    filenames.forEach((filename) => func(filename));
+  }
 
-	/**
-	 * Register a command to the client.
-	 * @param {Command | object} command - The command to add to the bot.
-	 * @returns {Command} - Command added
-	 */
-	addCommand(command) { /* eslint consistent-return:"off" */
-		if (!(command instanceof Command) && typeof command === 'object') { // allow command as object and create it
-			command = new Command(command)
-		}
-		if (!(command instanceof Command)) throw new TypeError('Not a command') // throw error if not a Command instance or class extending of command
-		if (!this.categories.find(c => c.name === command.category)) { // Check category exists or assing default category
-			command.category = DEFAULT_CATEGORY
-			this._logger.warn(`Category not found for ${command.name}. Established as ${DEFAULT_CATEGORY}`)
-		}
-		command.client = this // inject client on command
-		const { requirements } = command
-		command.requirements = [] // reset command.requirements
-		mapCommandRequirement(this, command, requirements) /* eslint no-use-before-define: "off" */
+  /**
+   * Register a command to the client.
+   * @param {Command | object} command - The command to add to the bot.
+   * @returns {Command} - Command added
+   */
+  addCommand(command) {
+    /* eslint consistent-return:"off" */
+    if (!(command instanceof Command) && typeof command === 'object') {
+      // allow command as object and create it
+      command = new Command(command);
+    }
+    if (!(command instanceof Command)) throw new TypeError('Not a command'); // throw error if not a Command instance or class extending of command
+    if (!this.categories.find((c) => c.name === command.category)) {
+      // Check category exists or assing default category
+      command.category = DEFAULT_CATEGORY;
+      this._logger.warn(
+        `Category not found for ${command.name}. Established as ${DEFAULT_CATEGORY}`
+      );
+    }
+    command.client = this; // inject client on command
+    const { requirements } = command;
+    command.requirements = []; // reset command.requirements
+    mapCommandRequirement(
+      this,
+      command,
+      requirements
+    ); /* eslint no-use-before-define: "off" */
 
-		// Check if command exists already and throw error or add to client
-		if (!command.childOf) {
-			const commandExists = this.commands.find(c => c.names.some(cname => [command.name, ...command.aliases].includes(cname)))
-			if (commandExists) {
-				this._logger.commandadderror(`Command exists: ${command.name}`)
-			} else {
-				this.commands.push(command)
-				this._logger.dev(`Command added: ${command.name}`)
-				return command
-			}
-		} else { // Find parent command and add to client
-			const parent = this.commands.find(c => c.names.includes(command.childOf))
-			if (!parent) {
-				throw new Error(`Parent command ${command.childOf} not found for ${command.name}`)
-			} else {
-				if (command.category !== parent.category) { // Set category as parent category if is different
-					command.category = parent.category
-					this._logger.warn(`${command.category} not same upcomand! Established as ${parent.category}`)
-				}
-				command.parent = parent
-				parent.childs.push(command)
-				this._logger.dev(`Subcommand added: ${command.name} from ${parent.name}`)
-				return command
-			}
-		}
-	}
+    // Check if command exists already and throw error or add to client
+    if (!command.childOf) {
+      const commandExists = this.commands.find((c) =>
+        c.names.some((cname) =>
+          [command.name, ...command.aliases].includes(cname)
+        )
+      );
+      if (commandExists) {
+        this._logger.commandadderror(`Command exists: ${command.name}`);
+      } else {
+        this.commands.push(command);
+        this._logger.dev(`Command added: ${command.name}`);
+        return command;
+      }
+    } else {
+      // Find parent command and add to client
+      const parent = this.commands.find((c) =>
+        c.names.includes(command.childOf)
+      );
+      if (!parent) {
+        throw new Error(
+          `Parent command ${command.childOf} not found for ${command.name}`
+        );
+      } else {
+        if (command.category !== parent.category) {
+          // Set category as parent category if is different
+          command.category = parent.category;
+          this._logger.warn(
+            `${command.category} not same upcomand! Established as ${parent.category}`
+          );
+        }
+        command.parent = parent;
+        parent.childs.push(command);
+        this._logger.dev(
+          `Subcommand added: ${command.name} from ${parent.name}`
+        );
+        return command;
+      }
+    }
+  }
 
-	/**
-	 * Load all the JS files in a directory and attempt to load them each as commands.
-	 * @param {string} dirname - The location of the directory.
-	 */
-	addCommandDir(dirname) {
-		this._addFromDirectory(dirname, filename => this.addCommandFile(filename))
-	}
+  /**
+   * Load all the JS files in a directory and attempt to load them each as commands.
+   * @param {string} dirname - The location of the directory.
+   */
+  addCommandDir(dirname) {
+    this._addFromDirectory(dirname, (filename) =>
+      this.addCommandFile(filename)
+    );
+  }
 
-	/**
-	 * Load a command exported from a file.
-	 * @param {string} filename - The location of the file.
-	 * @returns {Command} - Command added.
-	 */
-	addCommandFile(filename) {
-		try {
-			const commandLoaded = reload(filename)
-			const command = this.addCommand(commandLoaded)
-			if (command) {
-				command.filename = filename
-			}
-			return command
-		} catch (err) {
-			this._logger.commandadderror(`${err.stack} on ${filename}`)
-		}
-	}
+  /**
+   * Load a command exported from a file.
+   * @param {string} filename - The location of the file.
+   * @returns {Command} - Command added.
+   */
+  addCommandFile(filename) {
+    try {
+      const commandLoaded = reload(filename);
+      const command = this.addCommand(commandLoaded);
+      if (command) {
+        command.filename = filename;
+      }
+      return command;
+    } catch (err) {
+      this._logger.commandadderror(`${err.stack} on ${filename}`);
+    }
+  }
 
-	/**
-	 * Add a Command {@link Category}
-	 * @param {string} name - Name for Category
-	 * @param {string} help - Help Message
-	 * @param {object} options - Options
-	 * @param {object} options.hide - Options
-	 * @param {object} options.restrict - Options
-	 */
-	addCategory(name, help, options) {
-		const category = new Category(name, help, options)
-		if (this.categories.find(c => c.name === category.name)) {
-			this._logger.categoryadderror(`${category.name} exists`)
-		} else {
-			this.categories.push(category);
-			this._logger.dev(`Category added: ${category.name}`)
-		}
-	}
+  /**
+   * Add a Command {@link Category}
+   * @param {string} name - Name for Category
+   * @param {string} help - Help Message
+   * @param {object} options - Options
+   * @param {object} options.hide - Options
+   * @param {object} options.restrict - Options
+   */
+  addCategory(name, help, options) {
+    const category = new Category(name, help, options);
+    if (this.categories.find((c) => c.name === category.name)) {
+      this._logger.categoryadderror(`${category.name} exists`);
+    } else {
+      this.categories.push(category);
+      this._logger.dev(`Category added: ${category.name}`);
+    }
+  }
 
-	/**
-	 * Add a Component
-	 * @param {Component | object} component - Component {@link Component}
-	 * @returns {Component} - Component added
-	 */
-	addComponent(component, options) {
-		if (!(component instanceof Component) && typeof component === 'object') { // allow load components as object
-			const componentObject = component
-			if (!componentObject.name) throw new TypeError(`Component as object require an name => ${JSON.stringify(componentObject)}`)
-			component = class extends Component {
-				constructor(client, options) {
-					super(client, options)
-					if (typeof componentObject.constructor === 'function'){
-						componentObject.constructor(client, options)
-					}
-				}
-			}
-			Object.defineProperty(component, 'name', { value: componentObject.name })
-			Object.keys(componentObject).filter(key => key !== 'name').forEach(key => component.prototype[key] = componentObject[key])
-		}
-		if (!(component.prototype instanceof Component)) throw new TypeError(`Not a Component => ${component}`)
-		if (this.components[component.name]) { throw new Error(`Component exists => ${component.name}`) }
-		try {
-			const instanceComponent = new component(this, options) /* eslint new-cap: "off" */
-			if (instanceComponent.enable) {
-				instanceComponent.name = component.name
-				this.components[component.name] = instanceComponent
-				this._logger.dev(`Component Added: ${component.name}`)
-				return this.components[component.name]
-			} else {
-				this._logger.warn(`Component Disabled: ${component.name}`)
-			}
-		} catch (err) {
-			this._logger.componentadderror(`${component.name} - ${err}`)
-		}
-	}
+  /**
+   * Add a Component
+   * @param {Component | object} component - Component {@link Component}
+   * @returns {Component} - Component added
+   */
+  addComponent(component, options) {
+    if (!(component instanceof Component) && typeof component === 'object') {
+      // allow load components as object
+      const componentObject = component;
+      if (!componentObject.name)
+        throw new TypeError(
+          `Component as object require an name => ${JSON.stringify(
+            componentObject
+          )}`
+        );
+      component = class extends Component {
+        constructor(client, options) {
+          super(client, options);
+          if (typeof componentObject.constructor === 'function') {
+            componentObject.constructor(client, options);
+          }
+        }
+      };
+      Object.defineProperty(component, 'name', { value: componentObject.name });
+      Object.keys(componentObject)
+        .filter((key) => key !== 'name')
+        .forEach((key) => (component.prototype[key] = componentObject[key]));
+    }
+    if (!(component.prototype instanceof Component))
+      throw new TypeError(`Not a Component => ${component}`);
+    if (this.components[component.name]) {
+      throw new Error(`Component exists => ${component.name}`);
+    }
+    try {
+      const instanceComponent = new component(
+        this,
+        options
+      ); /* eslint new-cap: "off" */
+      if (instanceComponent.enable) {
+        instanceComponent.name = component.name;
+        this.components[component.name] = instanceComponent;
+        this._logger.dev(`Component Added: ${component.name}`);
+        return this.components[component.name];
+      } else {
+        this._logger.warn(`Component Disabled: ${component.name}`);
+      }
+    } catch (err) {
+      this._logger.componentadderror(`${component.name} - ${err}`);
+    }
+  }
 
-	/**
-	 * Add component from file
-	 * @param {string} filename Path to file
-	 * @returns {Component} Component added
-	 */
-	addComponentFile(filename) {
-		try {
-			const componentClass = reload(filename)
-			const component = this.addComponent(componentClass)
-			if (component) {
-				component.filename = filename
-			}
-			return component
-		} catch (err) {
-			this._logger.componentadderror(`${err} on ${filename}`)
-		}
-	}
+  /**
+   * Add component from file
+   * @param {string} filename Path to file
+   * @returns {Component} Component added
+   */
+  addComponentFile(filename) {
+    try {
+      const componentClass = reload(filename);
+      const component = this.addComponent(componentClass);
+      if (component) {
+        component.filename = filename;
+      }
+      return component;
+    } catch (err) {
+      this._logger.componentadderror(`${err} on ${filename}`);
+    }
+  }
 
-	/**
-	 * Add components from a directory
-	 * @param {string} dirname Path to load components
-	 */
-	addComponentDir(dirname) {
-		this._addFromDirectory(dirname, filename => this.addComponentFile(filename))
-	}
+  /**
+   * Add components from a directory
+   * @param {string} dirname Path to load components
+   */
+  addComponentDir(dirname) {
+    this._addFromDirectory(dirname, (filename) =>
+      this.addComponentFile(filename)
+    );
+  }
 
-	/**
-	 * Define a requirement that can be added by commands
-	 * @param  {(CommandRequirementObject|CommandRequirementFunction)} requirement - Requirement to define
-	 */
-	addCommandRequirement(requirement) {
-		if (typeof requirement === 'object' && requirement.type) {
-			this._commandsRequirements[requirement.type] = requirement
-			return requirement
-		} else if (typeof requirement === 'function') {
-			this._commandsRequirements[requirement.name] = requirement
-			return requirement
-		} else {
-			this._logger.error('Error adding command requirement')
-		}
-	}
+  /**
+   * Define a requirement that can be added by commands
+   * @param  {(CommandRequirementObject|CommandRequirementFunction)} requirement - Requirement to define
+   */
+  addCommandRequirement(requirement) {
+    if (typeof requirement === 'object' && requirement.type) {
+      this._commandsRequirements[requirement.type] = requirement;
+      return requirement;
+    } else if (typeof requirement === 'function') {
+      this._commandsRequirements[requirement.name] = requirement;
+      return requirement;
+    } else {
+      this._logger.error('Error adding command requirement');
+    }
+  }
 
-	/**
-	 * Add command requirement from file
-	 * @param {string} filename Path to file
-	 * @returns {CommandRequirement} CommandRequirement added
-	 */
-	addCommandRequirementFile(filename) {
-		try {
-			const requirementLoaded = reload(filename)
-			if (typeof requirementLoaded === 'function') Object.defineProperty(requirementLoaded, 'name', { value: path.basename(filename, '.js') })
-			const requirement = this.addCommandRequirement(requirementLoaded)
-			if (requirement) {
-				requirement.filename = filename
-			}
-			return requirement
-		} catch (err) {
-			this._logger.commandadderror(`${err} on ${filename}`)
-		}
-	}
+  /**
+   * Add command requirement from file
+   * @param {string} filename Path to file
+   * @returns {CommandRequirement} CommandRequirement added
+   */
+  addCommandRequirementFile(filename) {
+    try {
+      const requirementLoaded = reload(filename);
+      if (typeof requirementLoaded === 'function')
+        Object.defineProperty(requirementLoaded, 'name', {
+          value: path.basename(filename, '.js')
+        });
+      const requirement = this.addCommandRequirement(requirementLoaded);
+      if (requirement) {
+        requirement.filename = filename;
+      }
+      return requirement;
+    } catch (err) {
+      this._logger.commandadderror(`${err} on ${filename}`);
+    }
+  }
 
-	/**
-	 * Add command requirements from a directory
-	 * @param {string} dirname Path to load command requirements
-	 */
-	addCommandRequirementDir(dirname) {
-		this._addFromDirectory(dirname, filename => this.addCommandRequirementFile(filename))
-	}
+  /**
+   * Add command requirements from a directory
+   * @param {string} dirname Path to load command requirements
+   */
+  addCommandRequirementDir(dirname) {
+    this._addFromDirectory(dirname, (filename) =>
+      this.addCommandRequirementFile(filename)
+    );
+  }
 
-	/**
-	 * Reloads all commands that were loaded via `addCommandFile` and
-	 * `addCommandDir`. Useful for development to hot-reload commands as you work
-	 * on them.
-	 */
-	reloadCommands() { 
-		this._logger.dev('Reloading commands...')
-		const commands = this.commands.reduce((filenames, command) => {
-			filenames.push(command.filename ? command.filename : command)
-			if (command.childs.length > 0) {
-				command.childs.forEach((subcommand) => {
-					filenames.push(subcommand.filename ? subcommand.filename : subcommand)
-				})
-			}
-			return filenames
-		}, [])
-		this.commands = []
-		commands.forEach(command => typeof command === 'string' ? this.addCommandFile(command) : this.addCommand(command)) /* eslint no-confusing-arrow: 'off' */
-	}
+  /**
+   * Reloads all commands that were loaded via `addCommandFile` and
+   * `addCommandDir`. Useful for development to hot-reload commands as you work
+   * on them.
+   */
+  reloadCommands() {
+    this._logger.dev('Reloading commands...');
+    const commands = this.commands.reduce((filenames, command) => {
+      filenames.push(command.filename ? command.filename : command);
+      if (command.childs.length > 0) {
+        command.childs.forEach((subcommand) => {
+          filenames.push(
+            subcommand.filename ? subcommand.filename : subcommand
+          );
+        });
+      }
+      return filenames;
+    }, []);
+    this.commands = [];
+    commands.forEach((command) =>
+      typeof command === 'string'
+        ? this.addCommandFile(command)
+        : this.addCommand(command)
+    ); /* eslint no-confusing-arrow: 'off' */
+  }
 
-	/**
-	 * Reloads all components that were loaded via `addComponentFile` and
-	 * `addCommponentDir`. Useful for development to hot-reload commands as you work
-	 * on them.
-	 */
-	reloadComponents() { 
-		this._logger.dev('Reloading components...')
-		const components = Object.keys(this.components).map(key => this.components[key]).reduce((filenames, component) => {
-			if (component.filename) {
-				filenames.push([component.filename, component.name || component.constructor.name])
-			}
-			return filenames
-		}, [])
+  /**
+   * Reloads all components that were loaded via `addComponentFile` and
+   * `addCommponentDir`. Useful for development to hot-reload commands as you work
+   * on them.
+   */
+  reloadComponents() {
+    this._logger.dev('Reloading components...');
+    const components = Object.keys(this.components)
+      .map((key) => this.components[key])
+      .reduce((filenames, component) => {
+        if (component.filename) {
+          filenames.push([
+            component.filename,
+            component.name || component.constructor.name
+          ]);
+        }
+        return filenames;
+      }, []);
 
-		components.forEach(([filename, name]) => {
-			delete this.components[name]
-			this.addComponentFile(filename)
-		})
-		this.handleEvent('ready')()
-	}
+    components.forEach(([filename, name]) => {
+      delete this.components[name];
+      this.addComponentFile(filename);
+    });
+    this.handleEvent('ready')();
+  }
 
-	addInteractionCommand(command){
-		if (!(command instanceof Command) && typeof command === 'object') { // allow command as object and create it
-			command = new Command(command)
-		}
+  addInteractionCommand(command) {
+    if (!(command instanceof Command) && typeof command === 'object') {
+      // allow command as object and create it
+      command = new Command(command);
+    }
 
-		const { requirements = [] } = command
-		command.requirements = requirements.map(requirement => {
-			const resolvedRequirement = getCommandRequirement(this, command, requirement)
-			return resolvedRequirement
-		})
-		mapCommandRequirement(this, command, requirements) /* eslint no-use-before-define: "off" */
+    const { requirements = [] } = command;
+    command.requirements = requirements.map((requirement) => {
+      const resolvedRequirement = getCommandRequirement(
+        this,
+        command,
+        requirement
+      );
+      return resolvedRequirement;
+    });
+    mapCommandRequirement(
+      this,
+      command,
+      requirements
+    ); /* eslint no-use-before-define: "off" */
 
+    // reqs.forEach(req => {
+    // 	const requirement = getCommandRequirement(client, command, req)
+    // 	if(Array.isArray(requirement)){
+    // 		mapCommandRequirement(client, command, requirement)
+    // 	}else{
+    // 		command.addRequirement(requirement)
+    // 	}
+    // })
 
-		// reqs.forEach(req => {
-		// 	const requirement = getCommandRequirement(client, command, req)
-		// 	if(Array.isArray(requirement)){
-		// 		mapCommandRequirement(client, command, requirement)
-		// 	}else{
-		// 		command.addRequirement(requirement)
-		// 	}
-		// })
+    this.interactionCommands.push(command);
+  }
 
-		this.interactionCommands.push(command);
-	}
+  /**
+   * Load all the JS files in a directory and attempt to load them each as commands.
+   * @param {string} dirname - The location of the directory.
+   */
+  addInteractionCommandDir(dirname) {
+    this._addFromDirectory(dirname, (filename) =>
+      this.addInteractionCommandFile(filename)
+    );
+  }
 
-	/**
-	 * Load all the JS files in a directory and attempt to load them each as commands.
-	 * @param {string} dirname - The location of the directory.
-	 */
-	 addInteractionCommandDir(dirname) {
-		this._addFromDirectory(dirname, filename => this.addInteractionCommandFile(filename))
-	}
+  /**
+   * Load a command exported from a file.
+   * @param {string} filename - The location of the file.
+   * @returns {Command} - Command added.
+   */
+  addInteractionCommandFile(filename) {
+    try {
+      const commandLoaded = reload(filename);
+      const command = this.addInteractionCommand(commandLoaded);
+      if (command) {
+        command.filename = filename;
+      }
+      return command;
+    } catch (err) {
+      this._logger.commandadderror(`${err.stack} on ${filename}`);
+    }
+  }
 
-	/**
-	 * Load a command exported from a file.
-	 * @param {string} filename - The location of the file.
-	 * @returns {Command} - Command added.
-	 */
-	 addInteractionCommandFile(filename) {
-		try {
-			const commandLoaded = reload(filename)
-			const command = this.addInteractionCommand(commandLoaded)
-			if (command) {
-				command.filename = filename
-			}
-			return command
-		} catch (err) {
-			this._logger.commandadderror(`${err.stack} on ${filename}`)
-		}
-	}
+  reloadCommandRequirements() {
+    this._logger.dev('Reloading command requirements...');
+    const filenamesRequirement = Object.keys(this._commandsRequirements)
+      .map((key) => this._commandsRequirements[key])
+      .reduce((filenames, requirement) => {
+        if (requirement.filename) {
+          filenames.push(requirement.filename);
+        }
+        return filenames;
+      }, []);
+    // this._commandsRequirements = {}
+    filenamesRequirement.forEach((filename) =>
+      this.addCommandRequirementFile(filename)
+    );
+  }
 
-	reloadCommandRequirements() {
-		this._logger.dev('Reloading command requirements...')
-		const filenamesRequirement = Object.keys(this._commandsRequirements).map(key => this._commandsRequirements[key]).reduce((filenames, requirement) => {
-			if (requirement.filename) {
-				filenames.push(requirement.filename)
-			}
-			return filenames
-		}, [])
-		// this._commandsRequirements = {}
-		filenamesRequirement.forEach(filename => this.addCommandRequirementFile(filename))
-	}
+  /**
+   * Checks the list of registered commands and returns one whch is known by a
+   * given name, either as the command's name or an alias of the command.
+   * @param {string} command - The name of the command to look for.
+   * @param {string} subcommand - The name of the subcommand to look for.
+   * @return {Command|undefined}
+   */
+  getCommandByName(command, subcommand) {
+    const cmd = this.commands.find((c) => c.names.includes(command));
+    if (!cmd) return;
+    if (subcommand) {
+      const scmd = cmd.childs.find((c) => c.names.includes(subcommand));
+      return scmd || cmd;
+    }
+    return cmd;
+  }
 
-	/**
-	 * Checks the list of registered commands and returns one whch is known by a
-	 * given name, either as the command's name or an alias of the command.
-	 * @param {string} command - The name of the command to look for.
-	 * @param {string} subcommand - The name of the subcommand to look for.
-	 * @return {Command|undefined}
-	 */
-	getCommandByName(command, subcommand) {
-		const cmd = this.commands.find(c => c.names.includes(command))
-		if (!cmd) return
-		if (subcommand) {
-			const scmd = cmd.childs.find(c => c.names.includes(subcommand))
-			return scmd || cmd
-		}
-		return cmd
-	}
+  /***
+   * Returns the appropriate prefix string to use for commands based on a
+   * certain message.
+   * @param {Object} msg - The message to check the prefix of.
+   * @return {string}
+   */
+  getPrefixForMessage(msg) {
+    return this.prefix;
+  }
 
-	/***
-	 * Returns the appropriate prefix string to use for commands based on a
-	 * certain message.
-	 * @param {Object} msg - The message to check the prefix of.
-	 * @return {string}
-	 */
-	getPrefixForMessage(msg) {
-		return this.prefix
-	}
+  /***
+   * Takes a message, gets the prefix based on the config of any guild it was
+   * sent in, and returns the message's content without the prefix if the
+   * prefix matches, and `null` if it doesn't.
+   * @param {Object} msg - The message to process
+   * @return {Array<String|null>}
+   **/
+  splitPrefixFromContent(msg) {
+    // Traditional prefix handling - if there is no prefix, skip this rule
+    const prefix = this.getPrefixForMessage(msg); // TODO: guild config
+    if (prefix !== undefined && msg.content.startsWith(prefix)) {
+      return { prefix, content: msg.content.substr(prefix.length) };
+    }
+    // Allow mentions to be used as prefixes according to config
+    const match = msg.content.match(this.mentionPrefixRegExp);
+    if (this.allowMention && match) {
+      // TODO: guild config
+      return { prefix: match[0], content: msg.content.substr(match[0].length) };
+    }
+    // we got nothing
+    return { prefix: undefined, content: msg.content };
+  }
 
-	/***
-	 * Takes a message, gets the prefix based on the config of any guild it was
-	 * sent in, and returns the message's content without the prefix if the
-	 * prefix matches, and `null` if it doesn't.
-	 * @param {Object} msg - The message to process
-	 * @return {Array<String|null>}
-	 **/
-	splitPrefixFromContent(msg) {
-		// Traditional prefix handling - if there is no prefix, skip this rule
-		const prefix = this.getPrefixForMessage(msg) // TODO: guild config
-		if (prefix !== undefined && msg.content.startsWith(prefix)) {
-			return { prefix, content: msg.content.substr(prefix.length) }
-		}
-		// Allow mentions to be used as prefixes according to config
-		const match = msg.content.match(this.mentionPrefixRegExp)
-		if (this.allowMention && match) { // TODO: guild config
-			return { prefix: match[0], content: msg.content.substr(match[0].length) }
-		}
-		// we got nothing
-		return { prefix: undefined, content: msg.content }
-	}
+  /**
+   * Get Commands from a Category
+   * @param  {(string|string[])} categories - Category or list of these to search commands
+   * @return {Command[]|undefined} - Array of {@link Command} (include childs commands aka subcommands)
+   */
+  getCommandsOfCategories(categories) {
+    if (!Array.isArray(categories)) {
+      categories = [categories];
+    }
+    categories = categories.map((c) => c.toLowerCase());
+    const cmds = this.commands.filter((c) =>
+      categories.includes(c.category.toLowerCase())
+    );
+    return cmds.length > 0 ? cmds : undefined;
+  }
 
-	/**
-	 * Get Commands from a Category
-	 * @param  {(string|string[])} categories - Category or list of these to search commands
-	 * @return {Command[]|undefined} - Array of {@link Command} (include childs commands aka subcommands)
-	 */
-	getCommandsOfCategories(categories) {
-		if (!Array.isArray(categories)) {
-			categories = [categories]
-		}
-		categories = categories.map(c => c.toLowerCase())
-		const cmds = this.commands.filter(c => categories.includes(c.category.toLowerCase()))
-		return cmds.length > 0 ? cmds : undefined
-	}
+  /**
+   * If returns true, allow default commands management and messageCreate Components functions.
+   * @param  {Eris.message} msg - Eris Message object
+   * @param  {Client} client - Client instance
+   * @return {boolean} - true = allow, false = omit
+   */
+  triggerMessageCreate(msg, client) {
+    return true;
+  }
 
-	/**
-	 * If returns true, allow default commands management and messageCreate Components functions.
-	 * @param  {Eris.message} msg - Eris Message object
-	 * @param  {Client} client - Client instance
-	 * @return {boolean} - true = allow, false = omit
-	 */
-	triggerMessageCreate(msg, client) {
-		return true
-	}
+  /**
+   * @typedef EmbedMessageObject
+   * @see {@link https://abal.moe/Eris/docs/TextChannel#function-createMessage EmbedMessageObject}
+   */
 
-	/**
-	 * @typedef EmbedMessageObject
-	 * @see {@link https://abal.moe/Eris/docs/TextChannel#function-createMessage EmbedMessageObject}
-	 */
+  /**
+   * Creators for Command Requirements
+   * @typedef {function} CommandRequirementsCreators
+   * @param {object} config - Object with requirement config
+   * @see {@link https://desvelao.github.io/aghanim/tutorial-6command-requirements.html Command Requirements Creators} config - Object with requirement config
+   * @returns {CommandRequirementObject}
+   */
 
-	/**
-	 * Creators for Command Requirements
-	 * @typedef {function} CommandRequirementsCreators
-	 * @param {object} config - Object with requirement config
-	 * @see {@link https://desvelao.github.io/aghanim/tutorial-6command-requirements.html Command Requirements Creators} config - Object with requirement config
-	 * @returns {CommandRequirementObject}
-	 */
+  /**
+   * Create args object and find command. Returns both.
+   * @typedef parseCommand
+   * @prop  {args} args - args object
+   * @prop  {Command|undefined} command - command
+   */
 
-	/**
-	 * Create args object and find command. Returns both.
-	 * @typedef parseCommand
-	 * @prop  {args} args - args object
-	 * @prop  {Command|undefined} command - command
-	 */
+  /**
+   * Create args object and find command. Returns both.
+   * @param  {Eris.message} msg - Eris Message object
+   * @returns {parseCommand} -
+   */
+  createCommandArgs(msg) {
+    const { prefix, content } = this.splitPrefixFromContent(msg);
+    if (typeof prefix !== 'string' || typeof content !== 'string') return;
 
-	/**
-	 * Create args object and find command. Returns both.
-	 * @param  {Eris.message} msg - Eris Message object
-	 * @returns {parseCommand} - 
-	 */
-	createCommandArgs(msg) {
-		const { prefix, content } = this.splitPrefixFromContent(msg)
-		if (typeof prefix !== 'string' || typeof content !== 'string') return
+    const args = content.split(' ').map((word) => word.trim());
 
-		const args = content.split(' ').map(word => word.trim())
+    /**
+     * Message is spit for spaces (' ')
+     * @typedef args
+     * @prop {string} prefix - Message prefix
+     * @prop {string} content - Message content
+     * @prop {function} from - Splice message content from argument number to end message. fn(arg:number)
+     * @prop {function} until - Splice message content from begin until argument number. fn(arg:number)
+     * @prop {function} after - Same content. fn()
+     * @prop {Client} client - Client instance
+     * @prop {string} command - Command name
+     * @prop {(string|undefined)} subcommand - Subcommand name if exists
+     * @prop {array} - Each word form message is in a slot
+     */
+    args.prefix = prefix;
+    args.content = content;
+    args.from = (arg) => args.slice(arg).join(' ');
+    args.until = (arg) => args.prefix + args.slice(0, arg).join(' ');
+    args.after = args.from(1);
+    args.client = this;
+    args.command = args[0];
+    args.subcommand = args[1];
+    this.extendCommandArgs(args, msg, this);
+    return args;
+  }
 
-		/**
-		 * Message is spit for spaces (' ')
-		 * @typedef args
-		 * @prop {string} prefix - Message prefix
-		 * @prop {string} content - Message content
-		 * @prop {function} from - Splice message content from argument number to end message. fn(arg:number)
-		 * @prop {function} until - Splice message content from begin until argument number. fn(arg:number)
-		 * @prop {function} after - Same content. fn()
-		 * @prop {Client} client - Client instance
-		 * @prop {string} command - Command name
-		 * @prop {(string|undefined)} subcommand - Subcommand name if exists
-		 * @prop {array} - Each word form message is in a slot
-		 */
-		args.prefix = prefix
-		args.content = content
-		args.from = arg => args.slice(arg).join(' ')
-		args.until = arg => args.prefix + args.slice(0, arg).join(' ')
-		args.after = args.from(1)
-		args.client = this
-		args.command = args[0]
-		args.subcommand = args[1]
-		this.extendCommandArgs(args, msg, this)
-		return args
-	}
-
-	async checkRequirements(msg, args, client, command) {
-		if (!command.enable) { return false }
-		return command.requirements.reduce(async (result, requirement) => {
-			if (!(await result)) { return Promise.resolve(false) }
-			if (typeof requirement === 'object') {
-				const pass = await requirement.validate(msg, args, client, command, requirement)
-				if (pass === null) { // ignore response/responseDM/run methods
-					return Promise.resolve(false)
-				} else if (!pass) { // false/undefined do response/responseDM/run methods
-					if (["string", "object"].includes(typeof(requirement.response))) {
-						await this.createMessage(msg.channel.id, requirement.response) // Response to message
-					} else if (typeof requirement.response === "function") {
-						const res = await requirement.response(msg, args, client, command, requirement)
-						await this.createMessage(msg.channel.id, res) // Response to message
-					} else if (["string", "object"].includes(typeof(requirement.responseDM))) {
-						await msg.author.getDMChannel().then(channel => channel.createMessage(requirement.responseDM)) // Response with a dm
-					} else if (typeof requirement.responseDM === "function") {
-						const res = await requirement.responseDM(msg, args, client, command, requirement) 
-						await msg.author.getDMChannel().then(channel => channel.createMessage(res)) // Response with a dm
-					} else if (typeof requirement.run === "function") {
-						await requirement.run(msg, args, client, command, requirement) // Custom
-					}
-					return Promise.resolve(false)
-				}
-			}
-			return Promise.resolve(true) // result
-		}, Promise.resolve(true))
-	}
+  async checkRequirements(msg, args, client, command) {
+    if (!command.enable) {
+      return false;
+    }
+    return command.requirements.reduce(async (result, requirement) => {
+      if (!(await result)) {
+        return Promise.resolve(false);
+      }
+      if (typeof requirement === 'object') {
+        const pass = await requirement.validate(
+          msg,
+          args,
+          client,
+          command,
+          requirement
+        );
+        if (pass === null) {
+          // ignore response/responseDM/run methods
+          return Promise.resolve(false);
+        } else if (!pass) {
+          // false/undefined do response/responseDM/run methods
+          if (['string', 'object'].includes(typeof requirement.response)) {
+            await this.createMessage(msg.channel.id, requirement.response); // Response to message
+          } else if (typeof requirement.response === 'function') {
+            const res = await requirement.response(
+              msg,
+              args,
+              client,
+              command,
+              requirement
+            );
+            await this.createMessage(msg.channel.id, res); // Response to message
+          } else if (
+            ['string', 'object'].includes(typeof requirement.responseDM)
+          ) {
+            await msg.author
+              .getDMChannel()
+              .then((channel) => channel.createMessage(requirement.responseDM)); // Response with a dm
+          } else if (typeof requirement.responseDM === 'function') {
+            const res = await requirement.responseDM(
+              msg,
+              args,
+              client,
+              command,
+              requirement
+            );
+            await msg.author
+              .getDMChannel()
+              .then((channel) => channel.createMessage(res)); // Response with a dm
+          } else if (typeof requirement.run === 'function') {
+            await requirement.run(msg, args, client, command, requirement); // Custom
+          }
+          return Promise.resolve(false);
+        }
+      }
+      return Promise.resolve(true); // result
+    }, Promise.resolve(true));
+  }
 }
-
 
 function getCommandRequirement(client, command, req) {
-	if (typeof req === 'string') {
-		if (builtinCommandRequirements[req]) {
-			const requirement = builtinCommandRequirements[req]({command, client})
-			requirement.type = req
-			return requirement
-		} else if (client._commandsRequirements[req]) {
-			if (typeof client._commandsRequirements[req] === "object") {
-				return client._commandsRequirements[req]
-			}else if(typeof client._commandsRequirements[req]  === "function"){
-				return client._commandsRequirements[req]({ command, client })
-			}
-		} else {
-			throw new Error(`String command requirement not found: ${req}`)
-		}
-	} else if (typeof req === 'object') {
-		if (builtinCommandRequirements[req.type]) {
-			const requirement = builtinCommandRequirements[req.type]({ ...req, command, client })
-			requirement.type = req.type
-			return requirement
-		} else {
-			return req
-		}
-	} else {
-		throw new TypeError(`Requirement: ${req} on ${command.name}`)
-	}
+  if (typeof req === 'string') {
+    if (builtinCommandRequirements[req]) {
+      const requirement = builtinCommandRequirements[req]({ command, client });
+      requirement.type = req;
+      return requirement;
+    } else if (client._commandsRequirements[req]) {
+      if (typeof client._commandsRequirements[req] === 'object') {
+        return client._commandsRequirements[req];
+      } else if (typeof client._commandsRequirements[req] === 'function') {
+        return client._commandsRequirements[req]({ command, client });
+      }
+    } else {
+      throw new Error(`String command requirement not found: ${req}`);
+    }
+  } else if (typeof req === 'object') {
+    if (builtinCommandRequirements[req.type]) {
+      const requirement = builtinCommandRequirements[req.type]({
+        ...req,
+        command,
+        client
+      });
+      requirement.type = req.type;
+      return requirement;
+    } else {
+      return req;
+    }
+  } else {
+    throw new TypeError(`Requirement: ${req} on ${command.name}`);
+  }
 }
 
-function mapCommandRequirement(client, command, reqs){
-	reqs.forEach(req => {
-		const requirement = getCommandRequirement(client, command, req)
-		if(Array.isArray(requirement)){
-			mapCommandRequirement(client, command, requirement)
-		}else{
-			command.addRequirement(requirement)
-		}
-	})
+function mapCommandRequirement(client, command, reqs) {
+  reqs.forEach((req) => {
+    const requirement = getCommandRequirement(client, command, req);
+    if (Array.isArray(requirement)) {
+      mapCommandRequirement(client, command, requirement);
+    } else {
+      command.addRequirement(requirement);
+    }
+  });
 }
 
-module.exports = Client
+module.exports = Client;
