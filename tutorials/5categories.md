@@ -8,5 +8,5 @@ You can define your category methods. It should do before you add commands to yo
 	// Add a category with name "Fun"
 	client.addCategory('Fun', // Category name
 	'List of fun commands', ) // Description
-	{hide: false}) // options (optional). options.hide is false by default. Hide category of help default command. 
+	{hide: false}) // options (optional). options.hide is false by default. Hide category of help default command.
 ```

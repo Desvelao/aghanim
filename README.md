@@ -1,10 +1,11 @@
 # Aghanim
 
-**Aghanim** is a Command Client for create ***Discord*** bots with [Eris](https://github.com/abalabahaha/eris) in NodeJS based on [Yuuko](https://geo1088.github.io/yuuko)
+**Aghanim** is a Command Client for create **_Discord_** bots with [Eris](https://github.com/abalabahaha/eris) in NodeJS based on [Yuuko](https://geo1088.github.io/yuuko)
 
-__Author__ : [Desvelao^^](https://desvelao.github.io/profile/)  __Version__: `v0.2.0`
+**Author** : [Desvelao^^](https://desvelao.github.io/profile/) **Version**: `v0.2.0`
 
 ## Features
+
 - Add Commands/Subcommands and Components from files or directories
 - Support for Subcommands (Command should be exist)
 - Builtin commands requirements or define yours
@@ -36,46 +37,63 @@ $ yarn add Desvelao/aghanim#dev # yarn
 
 ```js
 //index.js
-const Aghanim  = require('aghanim')
-const { Command, Component }  = require('aghanim')
+const Aghanim = require('aghanim');
+const { Command, Component } = require('aghanim');
 
 const client = new Aghanim(
-	'your_bot_token', // Token used to auth your bot account
-    {
-  		prefix: 'a!', // Prefix used to trigger commands
-	}
-)
+  'your_bot_token', // Token used to auth your bot account
+  {
+    prefix: 'a!' // Prefix used to trigger commands
+  }
+);
 
-client.addCategory('Fun','Fun commands')
+client.addCategory('Fun', 'Fun commands');
 
-const pingCommand = new Command('ping', {
-  category : 'Fun', help : 'Get Pong!', args : ''},
-  async function(msg, args, client, command) {
-  	msg.channel.createMessage('Pong!')
-})
+const pingCommand = new Command(
+  'ping',
+  {
+    category: 'Fun',
+    help: 'Get Pong!',
+    args: ''
+  },
+  async function (msg, args, client, command) {
+    msg.channel.createMessage('Pong!');
+  }
+);
 
-client.addCommand(pingCommand)
+client.addCommand(pingCommand);
 
 // Component:
-class MyComponent extends Component{
-	constructor(client, options) {
-		super(client) // this.client is Aghanim Client instance. You can use in other methods
-	}
-	ready(client){ // method fired in client.on('ready', handler) by default of this component. Each component can add handlers for events.
-		console.log('My component is ready')
-	}
-	messageCreate(msg, args, client, command){ // method fired in client.on('messageCreat', handler).
-		console.log(`Message: ${msg.content}`)
-		// this.client is Aghanim Client instance. You can use it here
-	}
+class MyComponent extends Component {
+  constructor(client, options) {
+    super(client); // this.client is Aghanim Client instance. You can use in other methods
+  }
+  ready(client) {
+    // method fired in client.on('ready', handler) by default of this component. Each component can add handlers for events.
+    console.log('My component is ready');
+  }
+  messageCreate(msg, args, client, command) {
+    // method fired in client.on('messageCreat', handler).
+    console.log(`Message: ${msg.content}`);
+    // this.client is Aghanim Client instance. You can use it here
+  }
 }
 
-client.addComponent(MyComponent)
+client.addComponent(MyComponent);
 
 // Bot connent
-client.connect()
+client.connect();
 ```
 
 ```bash
 $ node index.js
 ```
+
+# Load Aghanim configuration
+
+The Aghanim client can load configuration from a file loated in the current directory:
+
+- aghanim.config.json
+- aghanim.config.js
+
+or define the `AGHANIM_CONFIG_FILE` environment variable to define the absolute path to the configuration file (like .js or .json)

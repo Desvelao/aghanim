@@ -33,36 +33,48 @@ class Client extends Eris.Client {
    * Message after categories in default command help message are shown
    * @param {boolean} [options.helpDM = true] - Active direct message to default command help
    * @param {boolean} [options.helpEnable = true] - Enable/disable default command help
-   * @param {boolean} [options.devLogs = false] - Enable/disable aghanim dev logs
    */
   constructor(token, options = {}) {
     // Attempt to load options from aghanim.config.js(on) file
     let configurationFileFound = false;
-    try {
-      options = require(`${process.cwd()}/aghanim.config`); /* eslint import/no-dynamic-require: "off", global-require : "off", no-param-reassign : "off" */
-    } catch (err) {} /* eslint no-empty: "off" */
+
+    if (process.env.AGHANIM_CONFIG_FILE) {
+      try {
+        const configFile = process.env.AGHANIM_CONFIG_FILE;
+        options = require(configFile); /* eslint import/no-dynamic-require: "off", global-require : "off", no-param-reassign : "off" */
+        configurationFileFound = configFile;
+      } catch (err) {
+        console.warn({ err });
+      }
+    } else {
+      try {
+        const configFile = `${process.cwd()}/aghanim.config`;
+        options = require(configFile); /* eslint import/no-dynamic-require: "off", global-require : "off", no-param-reassign : "off" */
+        configurationFileFound = configFile;
+      } catch (err) {
+        console.warn({ err });
+      } /* eslint no-empty: "off" */
+    }
 
     super(token, options);
-
-    options.devLogs = options.devLogs || false;
-
     // Logger
     this._logger = new Logger({
       label: 'Aghanim',
       timestamps: true,
       levels: {
-        dev: { style: 'magenta' },
         commandrunerror: { text: 'command:run:error', style: 'red' },
         componentrunerror: { text: 'component:run:error', style: 'red' },
         commandadderror: { text: 'command:add:error', style: 'red' },
         componentadderror: { text: 'component:add:error', style: 'red' },
         categoryadderror: { text: 'category:run:error', style: 'red' }
       },
-      ignoredLevels: [options.devLogs ? '' : 'dev']
+      ...(options.logger || {})
     });
 
     if (configurationFileFound) {
-      this._logger.info('Loaded: aghanim.config.js(on)');
+      this._logger.info(
+        `Loaded: aghanim.config.js(on) from ${configurationFileFound}`
+      );
     }
 
     /** @prop {string} - The prefix the bot will respond to in guilds
@@ -893,7 +905,7 @@ class Client extends Eris.Client {
         this._logger.commandadderror(`Command exists: ${command.name}`);
       } else {
         this.commands.push(command);
-        this._logger.dev(`Command added: ${command.name}`);
+        this._logger.debug(`Command added: ${command.name}`);
         return command;
       }
     } else {
@@ -915,7 +927,7 @@ class Client extends Eris.Client {
         }
         command.parent = parent;
         parent.childs.push(command);
-        this._logger.dev(
+        this._logger.debug(
           `Subcommand added: ${command.name} from ${parent.name}`
         );
         return command;
@@ -965,7 +977,7 @@ class Client extends Eris.Client {
       this._logger.categoryadderror(`${category.name} exists`);
     } else {
       this.categories.push(category);
-      this._logger.dev(`Category added: ${category.name}`);
+      this._logger.debug(`Category added: ${category.name}`);
     }
   }
 
@@ -1010,7 +1022,7 @@ class Client extends Eris.Client {
       if (instanceComponent.enable) {
         instanceComponent.name = component.name;
         this.components[component.name] = instanceComponent;
-        this._logger.dev(`Component Added: ${component.name}`);
+        this._logger.debug(`Component Added: ${component.name}`);
         return this.components[component.name];
       } else {
         this._logger.warn(`Component Disabled: ${component.name}`);
@@ -1102,7 +1114,7 @@ class Client extends Eris.Client {
    * on them.
    */
   reloadCommands() {
-    this._logger.dev('Reloading commands...');
+    this._logger.debug('Reloading commands...');
     const commands = this.commands.reduce((filenames, command) => {
       filenames.push(command.filename ? command.filename : command);
       if (command.childs.length > 0) {
@@ -1128,7 +1140,7 @@ class Client extends Eris.Client {
    * on them.
    */
   reloadComponents() {
-    this._logger.dev('Reloading components...');
+    this._logger.debug('Reloading components...');
     const components = Object.keys(this.components)
       .map((key) => this.components[key])
       .reduce((filenames, component) => {
@@ -1210,7 +1222,7 @@ class Client extends Eris.Client {
   }
 
   reloadCommandRequirements() {
-    this._logger.dev('Reloading command requirements...');
+    this._logger.debug('Reloading command requirements...');
     const filenamesRequirement = Object.keys(this._commandsRequirements)
       .map((key) => this._commandsRequirements[key])
       .reduce((filenames, requirement) => {

@@ -16,54 +16,63 @@ $ npm install --save Desvelao/aghanim#dev # npm
 ```
 
 ### Steps
+
 1. [Create](./tutorial-2create-bot.html) a bot instance
 2. Define your [Categories](tutorial-5categories.html)
 3. Add [Commands/Subcommands](tutorial-3command.html)
 4. Add [Components](tutorial-4components.html)
 5. Add [Command Requirements](tutorial-6comamnd-requirements.html)
 
-### Fast Example
+### Example
 
 ```js
 //index.js
-const Aghanim  = require('aghanim')
-const { Command, Component }  = require('aghanim')
+const Aghanim = require('aghanim');
+const { Command, Component } = require('aghanim');
 
 const client = new Aghanim(
-	'your_bot_token', // Token used to auth your bot account
-    {
-  		prefix: 'a!', // Prefix used to trigger commands
-	}
-)
+  'your_bot_token', // Token used to auth your bot account
+  {
+    prefix: 'a!' // Prefix used to trigger commands
+  }
+);
 
-client.addCategory('Fun','Fun commands')
+client.addCategory('Fun', 'Fun commands');
 
-const pingCommand = new Command('ping', {
-  category : 'Fun', help : 'Get Pong!', args : ''},
-  async function(msg, args, client, command) {
-  	msg.channel.createMessage('Pong!')
-})
+const pingCommand = new Command(
+  'ping',
+  {
+    category: 'Fun',
+    help: 'Get Pong!',
+    args: ''
+  },
+  async function (msg, args, client, command) {
+    msg.channel.createMessage('Pong!');
+  }
+);
 
-client.addCommand(pingCommand)
+client.addCommand(pingCommand);
 
 // Component:
-class MyComponent extends Component{
-	constructor(client, options) {
-		super(client) // this.client is Aghanim Client instance. You can use in other methods
-	}
-	ready(client){ // method fired in client.on('ready', handler) by default of this component. Each component can add handlers for events.
-		console.log('My component is ready')
-	}
-	messageCreate(msg, args, client, command){ // method fired in client.on('messageCreat', handler).
-		console.log(`Message: ${msg.content}`)
-		// this.client is Aghanim Client instance. You can use it here
-	}
+class MyComponent extends Component {
+  constructor(client, options) {
+    super(client); // this.client is Aghanim Client instance. You can use in other methods
+  }
+  ready(client) {
+    // method fired in client.on('ready', handler) by default of this component. Each component can add handlers for events.
+    console.log('My component is ready');
+  }
+  messageCreate(msg, args, client, command) {
+    // method fired in client.on('messageCreat', handler).
+    console.log(`Message: ${msg.content}`);
+    // this.client is Aghanim Client instance. You can use it here
+  }
 }
 
-client.addComponent(MyComponent)
+client.addComponent(MyComponent);
 
 // Bot connent
-client.connect()
+client.connect();
 ```
 
 ```bash

@@ -29,7 +29,7 @@ module.exports = {
 			// responseDM: (msg, args, client, command, requirement, conditionReqContext) => returns string/embed
 			// responseDM: (msg, args, client, command, requirement, conditionReqContext) => "DM: You don't have permissions to execute this command created by function"
 			run: // custom function run(msg, args, client, command, requirement, conditionReqContext)
-			init: (client, command, requirement) => { 
+			init: (client, command, requirement) => {
 				// do something when this requirement is added to commnad, for example add a hook to command
 			}
 			// You can add other props to be accesible through requirement variable
@@ -39,7 +39,9 @@ module.exports = {
 	run: (msg, args, client, command) => msg.channel.createMessage("This is my command") // If pass all command requirements, this will be run
 }
 ```
+
 ### <div id="define-user-requirement">Define user builtin requirements</div>
+
 Define a custom requirement or set of them to import easily from a command definition
 
 ```js
@@ -117,7 +119,7 @@ module.exports = {
 			// This object is passed to a command requirement creator function that returns a requirement object
 			response: "This command only avaliable in guild" // Resplye with that if message doesn't come from a guild
 			// responseDM: or reply with a dm
-			// run: or create a custom funcition 
+			// run: or create a custom funcition
 		}
 		// You can add more requirements to check. Resply with first requirement failed to pass
 	]
@@ -128,97 +130,101 @@ module.exports = {
 #### Command requirements creators:
 
 - Channels/Guilds/Users allow/deny:
-	- `channel.allow`: allow command on channels whose ids are on channels property
-	- `channel.deny`: deny command on channels whose ids are on channels property
-	- `guild.allow`: allow command on channels whose ids are on channels property
-	- `guild.deny`: deny command on channels whose ids are on channels property
-	- `user.allow`: allow command on channels whose ids are on channels property
-	- `user.deny`: deny command on channels whose ids are on channels property
-		```js
-		{
-		// command definition...
-			requirements : [
-				{
-					type: 'channel.allow', // map to the builtin requirement creator. Same interface for requirements from below
-					store: [], // array of strings channles ids
-					response, // optional
-					responseDM, // optional
-					run, // optional
-				}
-			]
-		}
-		```
+  - `channel.allow`: allow command on channels whose ids are on channels property
+  - `channel.deny`: deny command on channels whose ids are on channels property
+  - `guild.allow`: allow command on channels whose ids are on channels property
+  - `guild.deny`: deny command on channels whose ids are on channels property
+  - `user.allow`: allow command on channels whose ids are on channels property
+  - `user.deny`: deny command on channels whose ids are on channels property
+    ```js
+    {
+      // command definition...
+      requirements: [
+        {
+          type: 'channel.allow', // map to the builtin requirement creator. Same interface for requirements from below
+          store: [], // array of strings channles ids
+          response, // optional
+          responseDM, // optional
+          run // optional
+        }
+      ];
+    }
+    ```
 - Channels/Guilds/Users cooldown:
-	- `channel.cooldown`: allow command on channels if is not in cooldown
-	- `guild.cooldown`: allow command on channels if is not in cooldown
-	- `user.cooldown`: allow command on channels if is not in cooldown
-		```js
-		{
-		// command definition...
-			requirements : [
-				{
-					type: 'channel.cooldown', // map to the builtin requirement creator. Same interface for requirements from below
-					time: 60, // cooldown time in seconds. Set after a suscefully command execution
-					response, // optional
-					responseDM, // optional
-					run, // optional
-				}
-			]
-		}
-		```
+
+  - `channel.cooldown`: allow command on channels if is not in cooldown
+  - `guild.cooldown`: allow command on channels if is not in cooldown
+  - `user.cooldown`: allow command on channels if is not in cooldown
+    ```js
+    {
+      // command definition...
+      requirements: [
+        {
+          type: 'channel.cooldown', // map to the builtin requirement creator. Same interface for requirements from below
+          time: 60, // cooldown time in seconds. Set after a suscefully command execution
+          response, // optional
+          responseDM, // optional
+          run // optional
+        }
+      ];
+    }
+    ```
 
 - Member
-	- `member.has.permisions`: allow command on guild for member with permissions
-		```js
-		{
-		// command definition...
-			requirements : [
-				{
-					type: 'member.has.permisions', // map to the builtin requirement creator.
-					permissions: { // permision json. See more on <a href="#add-requirement">Add a requirement</a> https://abal.moe/Eris/docs/Permission
-						manageMessages: true,
-					}
-					response, // optional
-					responseDM, // optional
-					run, // optional
-				}
-			]
-		}
-		```
 
-	- `member.has.role`: allow command on guild for member with a role or some of array of roles.
-		```js
-		{
-		// command definition...
-			requirements : [
-				{
-					type: 'member.has.permisions', // map to the builtin requirement creator.
-					role: "Admin", // no case sensitive. Admit pass an array of role names
-					response, // optional
-					responseDM, // optional
-					run, // optional
-				}
-			]
-		}
-		```
+  - `member.has.permisions`: allow command on guild for member with permissions
+
+    ```js
+    {
+    // command definition...
+    	requirements : [
+    		{
+    			type: 'member.has.permisions', // map to the builtin requirement creator.
+    			permissions: { // permision json. See more on <a href="#add-requirement">Add a requirement</a> https://abal.moe/Eris/docs/Permission
+    				manageMessages: true,
+    			}
+    			response, // optional
+    			responseDM, // optional
+    			run, // optional
+    		}
+    	]
+    }
+    ```
+
+  - `member.has.role`: allow command on guild for member with a role or some of array of roles.
+    ```js
+    {
+      // command definition...
+      requirements: [
+        {
+          type: 'member.has.permisions', // map to the builtin requirement creator.
+          role: 'Admin', // no case sensitive. Admit pass an array of role names
+          response, // optional
+          responseDM, // optional
+          run // optional
+        }
+      ];
+    }
+    ```
 
 - Miscelaneous
-	- `dm.only`: allow command on direct message only
-	- `guild.only`: allow command on guild only
-	- `owner.only`: allow command for bot owner only
 
-		```js
-		// object definition...
-		{
-			requirements : [
-				{
-					type: 'dm.only', // map to the builtin requirement creator.
-					response, // optional
-					responseDM, // optional
-					run, // optional
-				},
-				//or
-				'dm.only' // if you dont want configure responses or run methods
-			]
-		}
-		```
+  - `dm.only`: allow command on direct message only
+  - `guild.only`: allow command on guild only
+  - `owner.only`: allow command for bot owner only
+
+    ```js
+    // object definition...
+    {
+      requirements: [
+        {
+          type: 'dm.only', // map to the builtin requirement creator.
+          response, // optional
+          responseDM, // optional
+          run // optional
+        },
+        //or
+        'dm.only' // if you dont want configure responses or run methods
+      ];
+    }
+    ```
