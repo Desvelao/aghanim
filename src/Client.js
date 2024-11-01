@@ -61,13 +61,6 @@ class Client extends Eris.Client {
     this._logger = new Logger({
       label: 'Aghanim',
       timestamps: true,
-      levels: {
-        commandrunerror: { text: 'command:run:error', style: 'red' },
-        componentrunerror: { text: 'component:run:error', style: 'red' },
-        commandadderror: { text: 'command:add:error', style: 'red' },
-        componentadderror: { text: 'component:add:error', style: 'red' },
-        categoryadderror: { text: 'category:run:error', style: 'red' }
-      },
       ...(options.logger || {})
     });
 
@@ -625,14 +618,12 @@ class Client extends Eris.Client {
        * @param {Client} client - Client instance
        * @param {Command} command - Command
        */
-      this._logger.commandrunerror(`${command.name} - ${err} - ${err.stack}`);
+      this._logger.error(`${command.name} - ${err} - ${err.stack}`);
       this.emit('aghanim:command:error', err, msg, args, this, command);
       try {
         await command.runHook('error', msg, args, this, command, err);
       } catch (errhook) {
-        this._logger.commandrunerror(
-          `${command.name} - ${errhook} - ${errhook.stack}`
-        );
+        this._logger.error(`${command.name} - ${errhook} - ${errhook.stack}`);
         this.emit('aghanim:command:error', errhook, msg, args, this, command);
       }
     }
@@ -716,7 +707,10 @@ class Client extends Eris.Client {
                       interactionCommand,
                       requirement
                     );
-                    return await interaction.createMessage(interactionResponse);
+                    return (
+                      interactionResponse &&
+                      (await interaction.createMessage(interactionResponse))
+                    );
                     break;
                   }
                   default:
@@ -781,7 +775,7 @@ class Client extends Eris.Client {
          * @param {Client} client - Client instance
          * @param {Command} command - Command
          */
-        this._logger.commandrunerror(
+        this._logger.error(
           `${interactionCommand.name} - ${err} - ${err.stack}`
         );
         this.emit(
@@ -800,7 +794,7 @@ class Client extends Eris.Client {
             err
           );
         } catch (errhook) {
-          this._logger.commandrunerror(
+          this._logger.error(
             `${interactionCommand.name} - ${errhook} - ${errhook.stack}`
           );
           this.emit(
@@ -824,7 +818,7 @@ class Client extends Eris.Client {
           try {
             await component[eventname](...args, this);
           } catch (err) {
-            this._logger.componentrunerror(
+            this._logger.error(
               `${component.constructor.name} (${eventname}) - ${err}`
             );
             /**
@@ -902,7 +896,7 @@ class Client extends Eris.Client {
         )
       );
       if (commandExists) {
-        this._logger.commandadderror(`Command exists: ${command.name}`);
+        this._logger.error(`Command exists: ${command.name}`);
       } else {
         this.commands.push(command);
         this._logger.debug(`Command added: ${command.name}`);
@@ -959,7 +953,7 @@ class Client extends Eris.Client {
       }
       return command;
     } catch (err) {
-      this._logger.commandadderror(`${err.stack} on ${filename}`);
+      this._logger.error(`${err.stack} on ${filename}`);
     }
   }
 
@@ -974,7 +968,7 @@ class Client extends Eris.Client {
   addCategory(name, help, options) {
     const category = new Category(name, help, options);
     if (this.categories.find((c) => c.name === category.name)) {
-      this._logger.categoryadderror(`${category.name} exists`);
+      this._logger.error(`${category.name} exists`);
     } else {
       this.categories.push(category);
       this._logger.debug(`Category added: ${category.name}`);
@@ -1028,7 +1022,7 @@ class Client extends Eris.Client {
         this._logger.warn(`Component Disabled: ${component.name}`);
       }
     } catch (err) {
-      this._logger.componentadderror(`${component.name} - ${err}`);
+      this._logger.error(`${component.name} - ${err}`);
     }
   }
 
@@ -1046,7 +1040,7 @@ class Client extends Eris.Client {
       }
       return component;
     } catch (err) {
-      this._logger.componentadderror(`${err} on ${filename}`);
+      this._logger.error(`${err} on ${filename}`);
     }
   }
 
@@ -1094,7 +1088,7 @@ class Client extends Eris.Client {
       }
       return requirement;
     } catch (err) {
-      this._logger.commandadderror(`${err} on ${filename}`);
+      this._logger.error(`${err} on ${filename}`);
     }
   }
 
@@ -1217,7 +1211,7 @@ class Client extends Eris.Client {
       }
       return command;
     } catch (err) {
-      this._logger.commandadderror(`${err.stack} on ${filename}`);
+      this._logger.error(`${err.stack} on ${filename}`);
     }
   }
 
