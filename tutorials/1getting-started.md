@@ -63,7 +63,7 @@ class MyComponent extends Component {
     console.log('My component is ready');
   }
   messageCreate(msg, args, client, command) {
-    // method fired in client.on('messageCreat', handler).
+    // method fired in client.on('messageCreate', handler).
     console.log(`Message: ${msg.content}`);
     // this.client is Aghanim Client instance. You can use it here
   }

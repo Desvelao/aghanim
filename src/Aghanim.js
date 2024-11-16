@@ -7,7 +7,7 @@ const Logger = require('./Logger');
 const CommandRequirementsCreators = require('./requirements');
 
 /**
- * Aghanim module to create a Command Client for {@link https://abal.moe/Eris/docs/getting-started Eris} using nodejs!
+ * Aghanim module to create a Command Client for {@link https://abal.moe/Eris/docs/getting-started Eris} using NodeJS!
  * @module aghanim
  * @returns {Client} Command client class
  */
@@ -27,4 +27,5 @@ module.exports.Eris = Eris;
 module.exports.Logger = Logger;
 /** @prop {CommandRequirementsCreators} CommandRequirementsCreators See {@link https://desvelao.github.com/aghanim/CommandRequirements CommandRequirements} */
 module.exports.CommandRequirementsCreators = CommandRequirementsCreators;
+/** @prop {constants} constants Constants */
 module.exports.constants = require('./constants');

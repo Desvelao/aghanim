@@ -1,7 +1,7 @@
 You can create command requirements for each command or use builtin command requirements creators
 
 - <a href="#add-requirement">Add a requirement</a>
-- <a href="#define-user-requirement">Define user builtin requirements</a>
+- <a href="#define-user-requirement">Define user built-in requirements</a>
 - <a href="#builtin-requirement">Builtin requirements creators</a>
 
 ### <div id="add-requirement">Add a requirement</div>
@@ -30,7 +30,7 @@ module.exports = {
 			// responseDM: (msg, args, client, command, requirement, conditionReqContext) => "DM: You don't have permissions to execute this command created by function"
 			run: // custom function run(msg, args, client, command, requirement, conditionReqContext)
 			init: (client, command, requirement) => {
-				// do something when this requirement is added to commnad, for example add a hook to command
+				// do something when this requirement is added to command, for example add a hook to command
 			}
 			// You can add other props to be accesible through requirement variable
 		}
@@ -40,7 +40,7 @@ module.exports = {
 }
 ```
 
-### <div id="define-user-requirement">Define user builtin requirements</div>
+### <div id="define-user-requirement">Define user built-in requirements</div>
 
 Define a custom requirement or set of them to import easily from a command definition
 
@@ -98,7 +98,7 @@ client.addCommandRequirement(function guildadmin({command, client}){ // function
 // injecting a defined command requirement in command
 module.exports = {
 	name: "admin", // command.name
-	requirements: ["guildadmin"] // will inject requirements defined below
+	requirements: ["guildadmin"] // will inject requirements defined above
 	run: async (msg, args, client, command) => {
 		// do something
 	}
@@ -207,7 +207,7 @@ module.exports = {
     }
     ```
 
-- Miscelaneous
+- Miscellaneous
 
   - `dm.only`: allow command on direct message only
   - `guild.only`: allow command on guild only

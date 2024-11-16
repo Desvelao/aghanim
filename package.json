@@ -1,13 +1,13 @@
 {
   "name": "aghanim",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Alternative command client for ErisJS to create Discord bots",
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "eslint": "./node_modules/.bin/eslint index.js",
-    "docs": "jsdoc src -d docs --readme ./readme.md -c ./conf.json -u ./tutorials",
-    "docs2": "jsdoc src -d docs --readme ./readme.md -c ./conf.json -u ./tutorials -t node_modules/jsdoc-template",
+    "docs": "jsdoc src -d docs --readme ./README.md -c ./conf.json -u ./tutorials",
+    "docs2": "jsdoc src -d docs --readme ./README.md -c ./conf.json -u ./tutorials -t node_modules/jsdoc-template",
     "predeploy": "npm run docs",
     "deploy": "gh-pages -d docs",
     "prettier:check": "prettier src --check",
@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "gh-pages": "^4.0.0",
+    "jsdoc": "3.6.0",
     "prettier": "2.3.2"
   }
 }

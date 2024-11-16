@@ -1,4 +1,4 @@
-You can extends your bot methods/funcionality or Eris structures throgh Aghanim Extension.
+You can extends your bot methods/funcionality or Eris structures through Aghanim Components.
 
 ### Custom extensions: after instantiate your bot
 
@@ -55,7 +55,7 @@ module.exports = {
   constructor: (client, options) => {
     // do something when create component instance
   },
-  ready: () => {
+  ready() {
     console.log('My component is ready');
   },
   messageCreate(msg, args, client, command) {
@@ -79,6 +79,7 @@ These events will be fired of components:
 - `guildDelete`
 - `guildMemberAdd`
 - `guildMemberRemove`
+- `interactionCommandCreate`
 
 For more info about client events go to [Eris](https://abal.moe/Eris/docs/Client#event-callCreate)
 
@@ -87,11 +88,11 @@ The arguments of these events are same Eris and added client as last. That means
 - Eris event: messageReactionAdd(message, emoji, userID)
 - Aghanim event: messageReactionAdd(message, emoji, userID, client)
 
-If you need listen more events of that Aghanim do by default you can do it
+If you need listen more events of that Aghanim does by default you can do it.
 
 ```js
 client.on(eventName, handler);
 
 // or if you want add Aghanim functionality through components
-client.on(eventName, client.handleEvent(eventName)); // that add client as last argument to event handler of Eris event handler
+client.on(eventName, client.handleEvent(eventName)); // that adds the client as last argument to event handler of Eris event handler
 ```

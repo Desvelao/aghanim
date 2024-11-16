@@ -649,6 +649,13 @@ class Client extends Eris.Client {
         this._logger.warn(
           `Command interaction triggered but the runner was not found: ${interaction.data.name}`
         );
+        /**
+         * Fired when an interaction command is triggered but the runner was not found
+         * @event Client#aghanim:command-interaction:triggered-not-found
+         * @param {object} interaction - Error
+         * @param {Client} client - Client instance
+         * @param {Command} interactionCommand - Interaction command
+         */
         this.emit(
           'aghanim:command-interaction:triggered-not-found',
           interaction,
@@ -661,6 +668,13 @@ class Client extends Eris.Client {
       this._logger.debug(
         `Command interaction triggered: ${interactionCommand.name}`
       );
+      /**
+       * Fired when an interaction command is triggered
+       * @event Client#aghanim:command-interaction:triggered
+       * @param {object} interaction - Error
+       * @param {Client} client - Client instance
+       * @param {Command} interactionCommand - Interaction command
+       */
       this.emit(
         'aghanim:command-interaction:triggered',
         interaction,
@@ -742,6 +756,13 @@ class Client extends Eris.Client {
         this._logger.debug(
           `Command interaction executing: ${interactionCommand.name}`
         );
+        /**
+         * Fired when an interaction command runner go to be executed
+         * @event Client#aghanim:command-interaction:executing
+         * @param {object} interaction - Error
+         * @param {Client} client - Client instance
+         * @param {Command} interactionCommand - Interaction command
+         */
         this.emit(
           'aghanim:command-interaction:executing',
           interaction,
@@ -752,6 +773,13 @@ class Client extends Eris.Client {
         this._logger.info(
           `Command interaction executed: ${interactionCommand.name}`
         );
+        /**
+         * Fired when an interaction command runner was executed
+         * @event Client#aghanim:command-interaction:executed
+         * @param {object} interaction - Error
+         * @param {Client} client - Client instance
+         * @param {Command} interactionCommand - Interaction command
+         */
         this.emit(
           'aghanim:command-interaction:executed',
           interaction,
@@ -783,6 +811,13 @@ class Client extends Eris.Client {
         this._logger.error(
           `Command interaction error: ${interactionCommand.name} - ${err.message} - ${err.stack}`
         );
+        /**
+         * Fired when an interaction command had an error
+         * @event Client#aghanim:command-interaction:error
+         * @param {object} interaction - Error
+         * @param {Client} client - Client instance
+         * @param {Command} interactionCommand - Interaction command
+         */
         this.emit(
           'aghanim:command-interaction:error',
           err,

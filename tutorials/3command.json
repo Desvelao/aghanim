@@ -1,3 +1,11 @@
 {
-  "title" : "Create Commands/Subcommands"
+  "title": "Create commands",
+  "children": {
+    "3command-interaction": {
+      "title": "Interaction command"
+    },
+    "3command-command": {
+      "title": "Command"
+    }
+  }
 }
