@@ -776,7 +776,7 @@ class Client extends Eris.Client {
          * @param {Command} command - Command
          */
         this._logger.error(
-          `${interactionCommand.name} - ${err} - ${err.stack}`
+          `Command interaction error: ${interactionCommand.name} - ${err.message} - ${err.stack}`
         );
         this.emit(
           'aghanim:command-interaction:error',
@@ -795,7 +795,7 @@ class Client extends Eris.Client {
           );
         } catch (errhook) {
           this._logger.error(
-            `${interactionCommand.name} - ${errhook} - ${errhook.stack}`
+            `Command interaction run hook: error: ${interactionCommand.name} - ${errhook.message} - ${errhook.stack}`
           );
           this.emit(
             'aghanim:command-interaction:error',
