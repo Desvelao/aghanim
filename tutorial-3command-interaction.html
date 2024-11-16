@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Tutorial: Create a bot</title>
+    <title>JSDoc: Tutorial: Interaction command</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,38 +17,88 @@
 
 <div id="main">
 
-    <h1 class="page-title">Tutorial: Create a bot</h1>
+    <h1 class="page-title">Tutorial: Interaction command</h1>
 
     <section>
 
 <header>
     
 
-    <h2>Create a bot</h2>
+    <h2>Interaction command</h2>
 </header>
 
 <article>
-    <h3>Creating a bot</h3>
-<h3>Example</h3>
-<pre class="prettyprint source lang-js"><code>//index.js
-const Aghanim = require('aghanim');
-
-const client = new Aghanim(
-  'your_bot_token', // Token used to auth your bot account
-  {
-    prefix: 'a!', // Prefix used to trigger commands
-    helpMessage: ':information_source: __**AghanimBot help**__',
-    helpDM: true, // Default help will use direct messages
-    helpMessageAfterCategories:
-      'Use `a!help &lt;category>` to see the others commands' //Message shown after categories in default help command
+    <h1>Interaction commands</h1>
+<p>These commands use the slash command (<code>/</code>) to be executed.</p>
+<h2>Definition</h2>
+<pre class="prettyprint source lang-ts"><code>interface InteractionCommandDefinition {
+  name: string,
+  description: string,
+  type: Aghanim.Eris.Constants.ApplicationCommandTypes.CHAT_INPUT,
+  customOptions: {
+    defer: boolean // send a signal as the bot is writing while running a long process of the command
+    'dev.forceUpdate': boolean // force to update the interaction command when the bot is started
   }
-);
+  scope: {
+    type: 'global' | 'guild', // global or guild
+    guildIDs: number[] // used for guild type to define the specific guild IDs to register
+  },
+  run: (interaction, client, command) => Promise&lt;any> { // Ensure to reply the interaction
+}
+</code></pre>
+<h2>Create and add the interaction command</h2>
+<pre class="prettyprint source lang-js"><code>const Aghanim = require('aghanim');
 
-// if it exists aghanim.config.js/json in project root, that configuration will be loaded before option object passed to instance initiation.
+// Create an interaction command definition
+const pingGlobalInteractionCommand = {
+  name: 'ping',
+  category: 'General',
+  description: 'About',
+  type: Aghanim.Eris.Constants.ApplicationCommandTypes.CHAT_INPUT,
+  customOptions: {
+    defer: true
+  }
+  scope: {
+    type: 'global',
+  },
+  run: async function (interaction, client, command) {
+    // interaction command logic
+    // Ensure to reply the interaction
+    return interaction.createMessage('Pong');
+  }
+};
 
-// too you can do
-const { Client } = requie('aghanim');
-const client = new Client(token, configuration);
+// Add the interaction command
+bot.addInteractionCommand(pingGlobalInteractionCommand)
+
+// Create an interaction command definition specific to a guild
+const pingGuildSpecificInteractionCommand = {
+  name: 'ping',
+  category: 'General',
+  description: 'About',
+  type: Aghanim.Eris.Constants.ApplicationCommandTypes.CHAT_INPUT,
+  customOptions: {
+    defer: true
+  }
+  scope: {
+    type: 'guild',
+    guildIDs: [123456789] // used for guild type to define the specific guild IDs to register
+  },
+  run: async function (interaction, client, command) {
+    // interaction command logic
+    // Ensure to reply the interaction
+    return interaction.createMessage('Pong');
+  }
+};
+
+// Add the interaction command
+bot.addInteractionCommand(pingGuildSpecificInteractionCommand)
+</code></pre>
+<h2>Add from a directory</h2>
+<p>You can add interaction commands from a directory. The files should be named as <code>*.js</code> and
+export by default the interaction command definition.</p>
+<pre class="prettyprint source lang-js"><code>const path = require('path');
+bot.addInteractionCommandDir(path.join(__dirname, 'interaction_commands')))
 </code></pre>
 </article>
 

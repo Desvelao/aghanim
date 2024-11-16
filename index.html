@@ -44,15 +44,14 @@
 
     <section>
         <article><h1>Aghanim</h1>
-<p><strong>Aghanim</strong> is a Command Client for create <em><strong>Discord</strong></em> bots with <a href="https://github.com/abalabahaha/eris">Eris</a> in NodeJS based on <a href="https://geo1088.github.io/yuuko">Yuuko</a></p>
-<p><strong>Author</strong> : <a href="https://desvelao.github.io/profile/">Desvelao^^</a>  <strong>Version</strong>: <code>v0.2.0</code></p>
+<p><strong>Aghanim</strong> is a Command Client to create <strong><em>Discord</em></strong> bots with <a href="https://github.com/abalabahaha/eris">Eris</a> in NodeJS based on <a href="https://geo1088.github.io/yuuko">Yuuko</a>.</p>
+<p><strong>Version</strong>: <code>v0.3.0</code></p>
 <h2>Features</h2>
 <ul>
-<li>Add Commands/Subcommands and Components from files or directories</li>
-<li>Support for Subcommands (Command should be exist)</li>
-<li>Builtin commands requirements or define yours</li>
-<li>Define Commands as objects or use Command class</li>
-<li>Define Components as object or a class that extends of Component class</li>
+<li>Add commands/subcommands and Components from files or directories</li>
+<li>Add interaction commands from files or directories</li>
+<li>Add components from files or directories</li>
+<li>Builtin commands requirements or define and register custom requirements</li>
 <li>Define methods to run in some Eris events automatically with your Components</li>
 </ul>
 <h2>Using the bot</h2>
@@ -62,55 +61,89 @@
 <h3>Installation</h3>
 <pre class="prettyprint source lang-bash"><code>$ npm install --save Desvelao/aghanim # npm
 $ yarn add Desvelao/aghanim # yarn
-
-# Dev branch
-$ npm install --save Desvelao/aghanim#dev # npm
-$ yarn add Desvelao/aghanim#dev # yarn
-
 </code></pre>
 <h3>Usage</h3>
 <pre class="prettyprint source lang-js"><code>//index.js
-const Aghanim  = require('aghanim')
-const { Command, Component }  = require('aghanim')
+const Aghanim = require('aghanim');
+const { Command, Component } = require('aghanim');
 
+// Create bot
 const client = new Aghanim(
-	'your_bot_token', // Token used to auth your bot account
-    {
-  		prefix: 'a!', // Prefix used to trigger commands
-	}
-)
+  'your_bot_token', // Token used to auth your bot account
+  {
+    prefix: 'a!' // Used by the commands manager based on text context. Use the interaction commands are the new way to interact
+  }
+);
 
-client.addCategory('Fun','Fun commands')
+// Add interaction command. Use slash commands (/ping)
+const pingGlobalInteractionCommand = {
+  name: 'ping',
+  description: 'About',
+  type: Aghanim.Eris.Constants.ApplicationCommandTypes.CHAT_INPUT,
+  customOptions: {
+    defer: true
+  }
+  scope: {
+    type: 'global',
+  },
+  run: async function (interaction, client, command) {
+    // interaction command logic
+    // Ensure to reply the interaction
+    return interaction.createMessage('Pong');
+  }
+};
 
-const pingCommand = new Command('ping', {
-  category : 'Fun', help : 'Get Pong!', args : ''},
-  async function(msg, args, client, command) {
-  	msg.channel.createMessage('Pong!')
-})
+client.addInteractionCommand(pingGlobalInteractionCommand);
 
-client.addCommand(pingCommand)
+// Add category
+client.addCategory('Fun', 'Fun commands');
 
-// Component:
-class MyComponent extends Component{
-	constructor(client, options) {
-		super(client) // this.client is Aghanim Client instance. You can use in other methods
-	}
-	ready(client){ // method fired in client.on('ready', handler) by default of this component. Each component can add handlers for events.
-		console.log('My component is ready')
-	}
-	messageCreate(msg, args, client, command){ // method fired in client.on('messageCreat', handler).
-		console.log(`Message: ${msg.content}`)
-		// this.client is Aghanim Client instance. You can use it here
-	}
+// Add command
+const pingCommand = new Command(
+  'ping',
+  {
+    category: 'Fun',
+    help: 'Get Pong!',
+    args: ''
+  },
+  async function (msg, args, client, command) {
+    await msg.channel.createMessage('Pong!');
+  }
+);
+
+client.addCommand(pingCommand);
+
+// Add component:
+class MyComponent extends Component {
+  constructor(client, options) {
+    super(client); // this.client is Aghanim Client instance. You can use in other methods
+  }
+  ready(client) {
+    // method fired in client.on('ready', handler) by default of this component. Each component can add handlers for events.
+    console.log('My component is ready');
+  }
+  messageCreate(msg, args, client, command) {
+    // method fired in client.on('messageCreate', handler).
+    console.log(`Message: ${msg.content}`);
+    // this.client is Aghanim Client instance. You can use it here
+  }
 }
 
-client.addComponent(MyComponent)
+client.addComponent(MyComponent);
 
 // Bot connent
-client.connect()
+client.connect();
 </code></pre>
+<p>Run the script:</p>
 <pre class="prettyprint source lang-bash"><code>$ node index.js
-</code></pre></article>
+</code></pre>
+<h1>Load Aghanim configuration</h1>
+<p>The Aghanim client can load configuration from a file in the current directory:</p>
+<ul>
+<li>aghanim.config.json</li>
+<li>aghanim.config.js</li>
+</ul>
+<p>or define the <code>AGHANIM_CONFIG_FILE</code> environment variable to define the absolute path to the configuration file (like .js or .json)</p></article>
     </section>
 
 
@@ -121,13 +154,13 @@ client.connect()
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-aghanim.html">aghanim</a></li></ul><h3>Classes</h3><ul><li><a href="Category.html">Category</a></li><li><a href="Client.html">Client</a></li><li><a href="Command.html">Command</a></li><li><a href="Component.html">Component</a></li></ul><h3>Events</h3><ul><li><a href="Client.html#event:aghanim:command:error">aghanim:command:error</a></li><li><a href="Client.html#event:aghanim:command:executed">aghanim:command:executed</a></li><li><a href="Client.html#event:aghanim:command:prereq">aghanim:command:prereq</a></li><li><a href="Client.html#event:aghanim:command:prerun">aghanim:command:prerun</a></li><li><a href="Client.html#event:aghanim:component:error">aghanim:component:error</a></li><li><a href="Client.html#event:aghanim:error">aghanim:error</a></li></ul><h3>Tutorials</h3><ul><li><a href="tutorial-1getting-started.html">Getting Started</a></li><li><a href="tutorial-2create-bot.html">Create a bot</a></li><li><a href="tutorial-3command.html">Create Commands/Subcommands</a></li><li><a href="tutorial-4components.html">Create Components</a></li><li><a href="tutorial-5categories.html">Create a category</a></li><li><a href="tutorial-6command-requirements.html">Command requirements</a></li></ul><h3>Global</h3><ul><li><a href="global.html#Logger">Logger</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-aghanim.html">aghanim</a></li></ul><h3>Classes</h3><ul><li><a href="Category.html">Category</a></li><li><a href="Client.html">Client</a></li><li><a href="Command.html">Command</a></li><li><a href="Component.html">Component</a></li></ul><h3>Events</h3><ul><li><a href="Client.html#event:aghanim:command-interaction:error">aghanim:command-interaction:error</a></li><li><a href="Client.html#event:aghanim:command-interaction:executed">aghanim:command-interaction:executed</a></li><li><a href="Client.html#event:aghanim:command-interaction:executing">aghanim:command-interaction:executing</a></li><li><a href="Client.html#event:aghanim:command-interaction:triggered">aghanim:command-interaction:triggered</a></li><li><a href="Client.html#event:aghanim:command-interaction:triggered-not-found">aghanim:command-interaction:triggered-not-found</a></li><li><a href="Client.html#event:aghanim:command:error">aghanim:command:error</a></li><li><a href="Client.html#event:aghanim:command:executed">aghanim:command:executed</a></li><li><a href="Client.html#event:aghanim:command:prereq">aghanim:command:prereq</a></li><li><a href="Client.html#event:aghanim:command:prerun">aghanim:command:prerun</a></li><li><a href="Client.html#event:aghanim:component:error">aghanim:component:error</a></li><li><a href="Client.html#event:aghanim:error">aghanim:error</a></li></ul><h3>Tutorials</h3><ul><li><a href="tutorial-1getting-started.html">Getting started</a></li><li><a href="tutorial-2create-bot.html">Create a bot</a></li><li><a href="tutorial-3command.html">Create commands</a></li><li><a href="tutorial-4components.html">Create components</a></li><li><a href="tutorial-5categories.html">Create command categories</a></li><li><a href="tutorial-6command-requirements.html">Command requirements</a></li></ul><h3>Global</h3><ul><li><a href="global.html#Logger">Logger</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.0</a>
 </footer>
 
 <script> prettyPrint(); </script>

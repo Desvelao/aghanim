@@ -31,7 +31,7 @@
     <p>You can create command requirements for each command or use builtin command requirements creators</p>
 <ul>
 <li><a href="#add-requirement">Add a requirement</a></li>
-<li><a href="#define-user-requirement">Define user builtin requirements</a></li>
+<li><a href="#define-user-requirement">Define user built-in requirements</a></li>
 <li><a href="#builtin-requirement">Builtin requirements creators</a></li>
 </ul>
 <h3><div id="add-requirement">Add a requirement</div></h3>
@@ -57,8 +57,8 @@ module.exports = {
 			// responseDM: (msg, args, client, command, requirement, conditionReqContext) => returns string/embed
 			// responseDM: (msg, args, client, command, requirement, conditionReqContext) => &quot;DM: You don't have permissions to execute this command created by function&quot;
 			run: // custom function run(msg, args, client, command, requirement, conditionReqContext)
-			init: (client, command, requirement) => { 
-				// do something when this requirement is added to commnad, for example add a hook to command
+			init: (client, command, requirement) => {
+				// do something when this requirement is added to command, for example add a hook to command
 			}
 			// You can add other props to be accesible through requirement variable
 		}
@@ -67,7 +67,7 @@ module.exports = {
 	run: (msg, args, client, command) => msg.channel.createMessage(&quot;This is my command&quot;) // If pass all command requirements, this will be run
 }
 </code></pre>
-<h3><div id="define-user-requirement">Define user builtin requirements</div></h3>
+<h3><div id="define-user-requirement">Define user built-in requirements</div></h3>
 <p>Define a custom requirement or set of them to import easily from a command definition</p>
 <pre class="prettyprint source lang-js"><code>client.addCommandRequirement(requirement) // requirement can be a object or a function
 
@@ -122,7 +122,7 @@ client.addCommandRequirement(function guildadmin({command, client}){ // function
 // injecting a defined command requirement in command
 module.exports = {
 	name: &quot;admin&quot;, // command.name
-	requirements: [&quot;guildadmin&quot;] // will inject requirements defined below
+	requirements: [&quot;guildadmin&quot;] // will inject requirements defined above
 	run: async (msg, args, client, command) => {
 		// do something
 	}
@@ -139,7 +139,7 @@ module.exports = {
 			// This object is passed to a command requirement creator function that returns a requirement object
 			response: &quot;This command only avaliable in guild&quot; // Resplye with that if message doesn't come from a guild
 			// responseDM: or reply with a dm
-			// run: or create a custom funcition 
+			// run: or create a custom funcition
 		}
 		// You can add more requirements to check. Resply with first requirement failed to pass
 	]
@@ -157,16 +157,16 @@ module.exports = {
 <li><code>guild.deny</code>: deny command on channels whose ids are on channels property</li>
 <li><code>user.allow</code>: allow command on channels whose ids are on channels property</li>
 <li><code>user.deny</code>: deny command on channels whose ids are on channels property<pre class="prettyprint source lang-js"><code>{
-// command definition...
-	requirements : [
-		{
-			type: 'channel.allow', // map to the builtin requirement creator. Same interface for requirements from below
-			store: [], // array of strings channles ids
-			response, // optional
-			responseDM, // optional
-			run, // optional
-		}
-	]
+  // command definition...
+  requirements: [
+    {
+      type: 'channel.allow', // map to the builtin requirement creator. Same interface for requirements from below
+      store: [], // array of strings channles ids
+      response, // optional
+      responseDM, // optional
+      run // optional
+    }
+  ];
 }
 </code></pre>
 </li>
@@ -178,16 +178,16 @@ module.exports = {
 <li><code>channel.cooldown</code>: allow command on channels if is not in cooldown</li>
 <li><code>guild.cooldown</code>: allow command on channels if is not in cooldown</li>
 <li><code>user.cooldown</code>: allow command on channels if is not in cooldown<pre class="prettyprint source lang-js"><code>{
-// command definition...
-	requirements : [
-		{
-			type: 'channel.cooldown', // map to the builtin requirement creator. Same interface for requirements from below
-			time: 60, // cooldown time in seconds. Set after a suscefully command execution
-			response, // optional
-			responseDM, // optional
-			run, // optional
-		}
-	]
+  // command definition...
+  requirements: [
+    {
+      type: 'channel.cooldown', // map to the builtin requirement creator. Same interface for requirements from below
+      time: 60, // cooldown time in seconds. Set after a suscefully command execution
+      response, // optional
+      responseDM, // optional
+      run // optional
+    }
+  ];
 }
 </code></pre>
 </li>
@@ -217,23 +217,23 @@ module.exports = {
 <li>
 <p><code>member.has.role</code>: allow command on guild for member with a role or some of array of roles.</p>
 <pre class="prettyprint source lang-js"><code>{
-// command definition...
-	requirements : [
-		{
-			type: 'member.has.permisions', // map to the builtin requirement creator.
-			role: &quot;Admin&quot;, // no case sensitive. Admit pass an array of role names
-			response, // optional
-			responseDM, // optional
-			run, // optional
-		}
-	]
+  // command definition...
+  requirements: [
+    {
+      type: 'member.has.permisions', // map to the builtin requirement creator.
+      role: 'Admin', // no case sensitive. Admit pass an array of role names
+      response, // optional
+      responseDM, // optional
+      run // optional
+    }
+  ];
 }
 </code></pre>
 </li>
 </ul>
 </li>
 <li>
-<p>Miscelaneous</p>
+<p>Miscellaneous</p>
 <ul>
 <li>
 <p><code>dm.only</code>: allow command on direct message only</p>
@@ -245,16 +245,16 @@ module.exports = {
 <p><code>owner.only</code>: allow command for bot owner only</p>
 <pre class="prettyprint source lang-js"><code>// object definition...
 {
-	requirements : [
-		{
-			type: 'dm.only', // map to the builtin requirement creator.
-			response, // optional
-			responseDM, // optional
-			run, // optional
-		},
-		//or
-		'dm.only' // if you dont want configure responses or run methods
-	]
+  requirements: [
+    {
+      type: 'dm.only', // map to the builtin requirement creator.
+      response, // optional
+      responseDM, // optional
+      run // optional
+    },
+    //or
+    'dm.only' // if you dont want configure responses or run methods
+  ];
 }
 </code></pre>
 </li>
@@ -268,13 +268,13 @@ module.exports = {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-aghanim.html">aghanim</a></li></ul><h3>Classes</h3><ul><li><a href="Category.html">Category</a></li><li><a href="Client.html">Client</a></li><li><a href="Command.html">Command</a></li><li><a href="Component.html">Component</a></li></ul><h3>Events</h3><ul><li><a href="Client.html#event:aghanim:command:error">aghanim:command:error</a></li><li><a href="Client.html#event:aghanim:command:executed">aghanim:command:executed</a></li><li><a href="Client.html#event:aghanim:command:prereq">aghanim:command:prereq</a></li><li><a href="Client.html#event:aghanim:command:prerun">aghanim:command:prerun</a></li><li><a href="Client.html#event:aghanim:component:error">aghanim:component:error</a></li><li><a href="Client.html#event:aghanim:error">aghanim:error</a></li></ul><h3>Tutorials</h3><ul><li><a href="tutorial-1getting-started.html">Getting Started</a></li><li><a href="tutorial-2create-bot.html">Create a bot</a></li><li><a href="tutorial-3command.html">Create Commands/Subcommands</a></li><li><a href="tutorial-4components.html">Create Components</a></li><li><a href="tutorial-5categories.html">Create a category</a></li><li><a href="tutorial-6command-requirements.html">Command requirements</a></li></ul><h3>Global</h3><ul><li><a href="global.html#Logger">Logger</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-aghanim.html">aghanim</a></li></ul><h3>Classes</h3><ul><li><a href="Category.html">Category</a></li><li><a href="Client.html">Client</a></li><li><a href="Command.html">Command</a></li><li><a href="Component.html">Component</a></li></ul><h3>Events</h3><ul><li><a href="Client.html#event:aghanim:command-interaction:error">aghanim:command-interaction:error</a></li><li><a href="Client.html#event:aghanim:command-interaction:executed">aghanim:command-interaction:executed</a></li><li><a href="Client.html#event:aghanim:command-interaction:executing">aghanim:command-interaction:executing</a></li><li><a href="Client.html#event:aghanim:command-interaction:triggered">aghanim:command-interaction:triggered</a></li><li><a href="Client.html#event:aghanim:command-interaction:triggered-not-found">aghanim:command-interaction:triggered-not-found</a></li><li><a href="Client.html#event:aghanim:command:error">aghanim:command:error</a></li><li><a href="Client.html#event:aghanim:command:executed">aghanim:command:executed</a></li><li><a href="Client.html#event:aghanim:command:prereq">aghanim:command:prereq</a></li><li><a href="Client.html#event:aghanim:command:prerun">aghanim:command:prerun</a></li><li><a href="Client.html#event:aghanim:component:error">aghanim:component:error</a></li><li><a href="Client.html#event:aghanim:error">aghanim:error</a></li></ul><h3>Tutorials</h3><ul><li><a href="tutorial-1getting-started.html">Getting started</a></li><li><a href="tutorial-2create-bot.html">Create a bot</a></li><li><a href="tutorial-3command.html">Create commands</a></li><li><a href="tutorial-4components.html">Create components</a></li><li><a href="tutorial-5categories.html">Create command categories</a></li><li><a href="tutorial-6command-requirements.html">Command requirements</a></li></ul><h3>Global</h3><ul><li><a href="global.html#Logger">Logger</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.0</a>
 </footer>
 
 <script> prettyPrint(); </script>
