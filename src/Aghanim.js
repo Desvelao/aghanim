@@ -27,3 +27,4 @@ module.exports.Eris = Eris;
 module.exports.Logger = Logger;
 /** @prop {CommandRequirementsCreators} CommandRequirementsCreators See {@link https://desvelao.github.com/aghanim/CommandRequirements CommandRequirements} */
 module.exports.CommandRequirementsCreators = CommandRequirementsCreators;
+module.exports.constants = require('./constants');

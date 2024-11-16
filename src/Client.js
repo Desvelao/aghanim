@@ -6,6 +6,7 @@ const reload = require('require-reload')(require);
 const Command = require('./Command');
 const Category = require('./Category');
 const Component = require('./Component');
+const constants = require('./constants');
 const builtinCommandRequirements = require('./requirements');
 
 const DEFAULT_CATEGORY = 'Default';
@@ -288,16 +289,20 @@ class Client extends Eris.Client {
     const interactionCommandScopeGlobal = this.interactionCommands.filter(
       (interactionCommand) =>
         !interactionCommand.scope ||
-        (interactionCommand.scope && interactionCommand.scope.type === 'global')
+        (interactionCommand.scope &&
+          interactionCommand.scope.type ===
+            constants.interactionCommandScope.global)
     );
     const interactionCommandScopeGuilds = this.interactionCommands.filter(
       (interactionCommand) =>
-        interactionCommand.scope && interactionCommand.scope.type === 'guild'
+        interactionCommand.scope &&
+        interactionCommand.scope.type ===
+          constants.interactionCommandScope.guild
     );
 
     if (interactionCommandScopeGlobal.length) {
       try {
-        // TODO: register, edit and delete glboal commands
+        // TODO: register, edit and delete global commands
         this._logger.debug(
           `Command interaction scope global: ${interactionCommandScopeGlobal
             .map(({ name }) => name)
@@ -341,7 +346,7 @@ class Client extends Eris.Client {
           }
         }
 
-        /* Glboal commands to remove */
+        /* Global commands to remove */
         const globalCommandsToRemove = globalCommands
           // TODO: remove the commands that are disabled
           .filter(
