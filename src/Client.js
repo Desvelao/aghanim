@@ -302,46 +302,62 @@ class Client extends Eris.Client {
 
     if (interactionCommandScopeGlobal.length) {
       try {
-        // TODO: register, edit and delete global commands
         this._logger.debug(
           `Command interaction scope global: ${interactionCommandScopeGlobal
             .map(({ name }) => name)
             .join(', ')}`
         );
         const globalCommands = await this.getCommands();
+
         for (const interactionCommand of interactionCommandScopeGlobal) {
           const { name, description, type, options, customOptions } =
             interactionCommand;
           /* Global command to create */
-          if (
-            globalCommands.every((command) => command.name !== interaction.name)
-          ) {
-            this.createCommand({ name, description, type, options }).then(
-              () => {
-                this._logger.info(
-                  `Command interaction scope global created: ${name}`
-                );
-              }
-            );
-            /* Global command to edit */
-          } else if (customOptions && customOptions['dev.forceUpdate']) {
-            const command = globalCommands.find(
-              (command) => command.name === interaction.name
-            );
-            this.editCommand(command.id, {
-              name,
-              description,
-              type,
-              options
-            }).then(() => {
+          try {
+            if (
+              globalCommands.every(
+                (command) => command.name !== interactionCommand.name
+              )
+            ) {
+              this._logger.info(
+                `Creating command interaction scope global created: ${name}`
+              );
+              await this.createCommand({ name, description, type, options });
+              this._logger.info(
+                `Command interaction scope global created: ${name}`
+              );
+              /* Global command to edit */
+            } else if (customOptions && customOptions['dev.forceUpdate']) {
+              const command = globalCommands.find(
+                (command) => command.name === interactionCommand.name
+              );
+              this._logger.debug(
+                `Command interaction scope global editing: ${name}`
+              );
+              await this.editCommand(command.id, {
+                name,
+                description,
+                type,
+                options
+              });
               this._logger.info(
                 `Command interaction scope global edited: ${name}`
               );
-            });
-            /* Global command to ignore the editing */
-          } else {
-            this._logger.debug(
-              `Command interaction scope global skipped to updating: ${name}. Use customOptions['dev.forceUpdate'] = true`
+              /* Global command to ignore the editing */
+            } else {
+              this._logger.debug(
+                `Command interaction scope global skipped to updating: ${name}. Use customOptions['dev.forceUpdate'] = true`
+              );
+            }
+          } catch (error) {
+            this._logger.error(
+              `Command interaction scope global check registration: ${name} error: ${error.message}`
+            );
+            this.emit(
+              'aghanim:command-interaction:register:error',
+              interaction,
+              this,
+              { error }
             );
           }
         }
@@ -367,24 +383,34 @@ class Client extends Eris.Client {
               .map(({ name }) => name)
               .join(', ')}`
           );
-          globalCommandsToRemove.forEach((globalCommand) => {
-            this._logger.debug(
-              `Command interaction scope global to remove ${guildCommand.name}`
-            );
-            this.deleteCommand(guildID, globalCommand.id)
-              .then(() => {
-                this._logger.info(
-                  `Command interaction scope global removed: ${guildCommand.name}`
-                );
-              })
-              .catch((error) => {
-                this._logger.error(
-                  `Command interaction scope global error removing ${guildCommand.name}: ${error}`
-                );
-              });
-          });
+
+          for (const globalCommand of globalCommandsToRemove) {
+            try {
+              this._logger.debug(
+                `Command interaction scope global to remove ${globalCommand.name}`
+              );
+              await this.deleteCommand(globalCommand.id);
+              this._logger.info(
+                `Command interaction scope global removed: ${globalCommand.name}`
+              );
+            } catch (error) {
+              this._logger.error(
+                `Command interaction scope global error removing ${globalCommand.name}: ${error.message}`
+              );
+              this.emit(
+                'aghanim:command-interaction:register:deletion:error',
+                interaction,
+                this,
+                { error }
+              );
+            }
+          }
         }
-      } catch (error) {}
+      } catch (error) {
+        this._logger.error(
+          `Command interaction register error: ${error.message}`
+        );
+      }
     }
 
     if (interactionCommandScopeGuilds.length) {
@@ -457,11 +483,11 @@ class Client extends Eris.Client {
                   );
                 }
               } catch (error) {
-                this._logger.debug(
+                this._logger.error(
                   `Command interaction scope guild ID (${guildID}) check registration: ${name} error: ${error.message}`
                 );
                 this.emit(
-                  'aghanim:command-interaction:error:register',
+                  'aghanim:command-interaction:register:error',
                   interaction,
                   this,
                   { guildID, error }
@@ -502,13 +528,21 @@ class Client extends Eris.Client {
                 );
               } catch (error) {
                 this._logger.error(
-                  `Command interaction scope guild ID (${guildID}) error removing ${guildCommand.name}: ${error}`
+                  `Command interaction scope guild ID (${guildID}) error removing ${guildCommand.name}: ${error.message}`
+                );
+                this.emit(
+                  'aghanim:command-interaction:register:deletion:error',
+                  interaction,
+                  this,
+                  { guildID, error }
                 );
               }
             }
           }
         } catch (error) {
-          // TODO: handle the error
+          this._logger.error(
+            `Command interaction register error: ${error.message}`
+          );
         }
       });
     }
